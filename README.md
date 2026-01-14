@@ -1,6 +1,8 @@
 # Axis Deal Engine
 
-Internal deal sourcing engine for property opportunities. Calculates BMV (Below Market Value) scores and identifies high-potential deals.
+Internal property deal evaluation engine for identifying below-market-value opportunities. Combines BMV scoring with planning potential assessment to surface high-value acquisition targets.
+
+> **Note:** Scraping and live data integrations are intentionally excluded at this stage. The engine uses mock data for development and demonstration purposes.
 
 ## Status
 
@@ -12,6 +14,8 @@ Internal deal sourcing engine for property opportunities. Calculates BMV (Below 
 - pip or uv for dependency management
 
 ## Quick Start
+
+### Web App (FastAPI)
 
 ```bash
 # Clone and enter directory
@@ -30,6 +34,21 @@ python run.py
 
 Open http://127.0.0.1:8000 in your browser.
 
+### Desktop App (Electron)
+
+```bash
+# From the repo root
+cd desktop
+
+# Install Node dependencies
+npm install
+
+# Run the desktop app
+npm start
+```
+
+The Electron wrapper spawns the FastAPI backend automatically and displays the UI in a native window.
+
 ## Project Structure
 
 ```
@@ -41,9 +60,12 @@ axis-deal-engine/
 │   ├── base.py         # Abstract scraper interface
 │   └── mock.py         # Mock data generator for development
 ├── web/                # Web interface
-│   ├── app.py          # FastAPI application
+│   ├── app.py          # FastAPI application + planning assessment
 │   ├── templates/      # Jinja2 HTML templates
 │   └── static/         # CSS, JS assets
+├── desktop/            # Electron desktop wrapper
+│   ├── main.js         # Electron main process
+│   └── package.json    # Node dependencies
 ├── utils/              # Utilities
 │   ├── config.py       # Configuration management
 │   └── formatting.py   # Display formatting helpers
