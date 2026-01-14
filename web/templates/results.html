@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="results-header">
+    <h1>Search Results</h1>
+    <p class="results-summary">
+        Found <strong>{{ total_count }}</strong> properties in <strong>{{ criteria.location }}</strong>
+        {% if criteria.max_price %}under £{{ "{:,}".format(criteria.max_price) }}{% endif %}
+    </p>
+    <a href="/" class="btn btn-secondary">New Search</a>
+</section>
+
+{% if planning_assessment %}
+<section class="planning-summary">
+    <div class="planning-header">
+        <div class="planning-score-display">
+            <span class="planning-score {{ planning_assessment.label }}">{{ planning_assessment.score }}</span>
+            <span class="planning-label">{{ planning_assessment.label|capitalize }} Planning Potential</span>
+        </div>
+        {% if planning_assessment.uplift_percent_high > 0 %}
+        <div class="planning-uplift">
+            <span class="uplift-value">+{{ planning_assessment.uplift_percent_low }}% - {{ planning_assessment.uplift_percent_high }}%</span>
+            <span class="uplift-label">Est. Value Uplift</span>
+        </div>
+        {% endif %}
+    </div>
+    <div class="planning-details">
+        {% if planning_assessment.positive_factors %}
+        <div class="planning-factors positive">
+            <strong>Positives:</strong>
+            <ul>
+            {% for factor in planning_assessment.positive_factors %}
+                <li>{{ factor }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% if planning_assessment.negative_factors %}
+        <div class="planning-factors negative">
+            <strong>Constraints:</strong>
+            <ul>
+            {% for factor in planning_assessment.negative_factors %}
+                <li>{{ factor }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <p><strong>Summary:</strong> {{ planning_assessment.rationale }}</p>
+    </div>
+    <p class="planning-disclaimer"><strong>Disclaimer:</strong> Planning assessments are indicative only and do not constitute professional advice.</p>
+</section>
+{% endif %}
+
+{% if analyses %}
+<section class="results-table-section">
+    <table class="results-table">
+        <thead>
+            <tr>
+                <th>Address</th>
+                <th>Type</th>
+                <th>Beds</th>
+                <th>Asking</th>
+                <th>Est. Value</th>
+                <th>BMV %</th>
+                <th>Score</th>
+                <th>Recommendation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for analysis in analyses %}
+            <tr class="recommendation-{{ analysis.recommendation }}{% if analysis.combined_opportunity %} combined-opportunity{% endif %}">
+                {% if analysis.combined_opportunity %}
+                <td colspan="8" class="combined-banner">
+                    <strong>COMBINED OPPORTUNITY:</strong> BMV Deal + Planning Upside
+                </td>
+            </tr>
+            <tr class="recommendation-{{ analysis.recommendation }} combined-opportunity">
+                {% endif %}
+                <td class="col-address">
+                    <div class="address-primary">{{ analysis.listing.address }}</div>
+                    <div class="address-secondary">{{ analysis.listing.area }}, {{ analysis.listing.postcode }}</div>
+                </td>
+                <td>{{ analysis.listing.property_type|capitalize }}</td>
+                <td>{{ analysis.listing.bedrooms }}</td>
+                <td class="col-price">£{{ "{:,}".format(analysis.listing.asking_price) }}</td>
+                <td class="col-price">£{{ "{:,}".format(analysis.listing.estimated_value) }}</td>
+                <td class="col-bmv {% if analysis.bmv_percent >= 15 %}bmv-excellent{% elif analysis.bmv_percent >= 10 %}bmv-good{% elif analysis.bmv_percent >= 5 %}bmv-fair{% else %}bmv-low{% endif %}">
+                    {{ analysis.bmv_percent }}%
+                    {% if analysis.planning and analysis.planning.has_upside %}
+                    <span class="planning-badge">+Planning</span>
+                    {% endif %}
+                </td>
+                <td class="col-score">
+                    <span class="score-badge">{{ analysis.overall_score }}</span>
+                </td>
+                <td class="col-recommendation">
+                    <span class="badge badge-{{ analysis.recommendation }}">{{ analysis.recommendation|capitalize }}</span>
+                </td>
+            </tr>
+            <tr class="notes-row">
+                <td colspan="8">
+                    <div class="notes-content">
+                        <span class="days-on-market">{{ analysis.listing.days_on_market }} days on market</span>
+                        {% for note in analysis.notes %}
+                        <span class="note-item">{{ note }}</span>
+                        {% endfor %}
+                        <span class="potential-profit">Potential: £{{ "{:,}".format(analysis.potential_profit) }}</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="legend-section">
+    <h3>Score Legend</h3>
+    <div class="legend-items">
+        <span class="badge badge-strong">Strong</span> Score 70+ with 10%+ BMV
+        <span class="badge badge-moderate">Moderate</span> Score 50+ or 15%+ BMV
+        <span class="badge badge-weak">Weak</span> Score 30+ or 5%+ BMV
+        <span class="badge badge-avoid">Avoid</span> Below thresholds
+    </div>
+</section>
+{% else %}
+<section class="no-results">
+    <h2>No Results Found</h2>
+    <p>No properties matched your criteria. Try adjusting your search parameters.</p>
+    <a href="/" class="btn btn-primary">New Search</a>
+</section>
+{% endif %}
+{% endblock %}

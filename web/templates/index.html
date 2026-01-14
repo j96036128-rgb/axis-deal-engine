@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <h1>Property Deal Finder</h1>
+    <p>Search for below-market-value property opportunities.</p>
+</section>
+
+<section class="search-section">
+    <form action="/search" method="post" class="search-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" required
+                       placeholder="e.g. Manchester, London, Birmingham">
+            </div>
+        </div>
+
+        <div class="form-row form-row-grid">
+            <div class="form-group">
+                <label for="min_beds">Min Beds</label>
+                <select id="min_beds" name="min_beds">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5+</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="max_beds">Max Beds</label>
+                <select id="max_beds" name="max_beds">
+                    <option value="">Any</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6+</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="min_baths">Min Baths</label>
+                <select id="min_baths" name="min_baths">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3+</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row form-row-grid">
+            <div class="form-group">
+                <label for="max_price">Max Price (£)</label>
+                <input type="number" id="max_price" name="max_price"
+                       placeholder="e.g. 300000" min="0" step="5000">
+            </div>
+
+            <div class="form-group">
+                <label for="target_bmv">Target BMV (%)</label>
+                <input type="number" id="target_bmv" name="target_bmv"
+                       value="15" min="0" max="50" step="1">
+                <span class="form-hint">Below market value target</span>
+            </div>
+        </div>
+
+        <!-- Planning Context Section -->
+        <div class="planning-context-section">
+            <div class="planning-toggle" onclick="togglePlanning()">
+                <span class="toggle-icon" id="planning-icon">+</span>
+                <span>Planning Context (Optional)</span>
+            </div>
+            <div id="planning-form" class="planning-form collapsed">
+                <p class="form-hint">Add planning context to assess development potential.</p>
+
+                <!-- Property Baseline -->
+                <div class="planning-subsection">
+                    <h4>Property Baseline</h4>
+                    <div class="form-row form-row-grid">
+                        <div class="form-group">
+                            <label for="property_type">Property Type</label>
+                            <select id="property_type" name="property_type">
+                                <option value="">-- Select --</option>
+                                <option value="house_detached">Detached House</option>
+                                <option value="house_semi">Semi-Detached House</option>
+                                <option value="house_terraced">Terraced House</option>
+                                <option value="flat">Flat</option>
+                                <option value="bungalow">Bungalow</option>
+                                <option value="commercial">Commercial</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="planning_tenure">Tenure</label>
+                            <select id="planning_tenure" name="planning_tenure">
+                                <option value="">-- Select --</option>
+                                <option value="freehold">Freehold</option>
+                                <option value="leasehold">Leasehold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row form-row-grid">
+                        <div class="form-group">
+                            <label for="current_sqft">Current SqFt</label>
+                            <input type="number" id="current_sqft" name="current_sqft" min="0" placeholder="e.g. 1200">
+                        </div>
+                        <div class="form-group">
+                            <label for="plot_size_sqft">Plot Size (SqFt)</label>
+                            <input type="number" id="plot_size_sqft" name="plot_size_sqft" min="0" placeholder="e.g. 2500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Planning Constraints -->
+                <div class="planning-subsection">
+                    <h4>Planning Constraints</h4>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="listed_building" value="true">
+                            Listed Building
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="conservation_area" value="true">
+                            Conservation Area
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="article_4" value="true">
+                            Article 4 Direction
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="green_belt" value="true">
+                            Green Belt
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="tpo" value="true">
+                            Tree Preservation Order
+                        </label>
+                    </div>
+                    <div class="form-row form-row-grid">
+                        <div class="form-group">
+                            <label for="listed_grade">Listed Grade</label>
+                            <select id="listed_grade" name="listed_grade">
+                                <option value="">N/A</option>
+                                <option value="II">Grade II</option>
+                                <option value="II*">Grade II*</option>
+                                <option value="I">Grade I</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="flood_zone">Flood Zone</label>
+                            <select id="flood_zone" name="flood_zone">
+                                <option value="1">Zone 1 (Low Risk)</option>
+                                <option value="2">Zone 2 (Medium)</option>
+                                <option value="3">Zone 3 (High Risk)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Proposed Development -->
+                <div class="planning-subsection">
+                    <h4>Proposed Development</h4>
+                    <div class="form-group">
+                        <label for="proposed_type">Development Type</label>
+                        <select id="proposed_type" name="proposed_type">
+                            <option value="">-- Select --</option>
+                            <option value="extension_loft">Loft Conversion</option>
+                            <option value="extension_rear">Rear Extension</option>
+                            <option value="extension_side">Side Extension</option>
+                            <option value="extension_basement">Basement Extension</option>
+                            <option value="conversion_flats">Convert to Flats</option>
+                            <option value="conversion_hmo">Convert to HMO</option>
+                            <option value="change_of_use">Change of Use</option>
+                            <option value="permitted_development">Permitted Development</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Nearby Precedents -->
+                <div class="planning-subsection">
+                    <h4>Nearby Precedents</h4>
+                    <p class="form-hint">Add known nearby planning decisions.</p>
+                    <div id="precedents-list"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPrecedent()">+ Add Precedent</button>
+                </div>
+
+                <p class="planning-disclaimer">
+                    <strong>Disclaimer:</strong> Planning assessments are indicative only.
+                </p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Search Properties</button>
+        </div>
+    </form>
+</section>
+
+<script>
+let precedentCount = 0;
+
+function togglePlanning() {
+    const form = document.getElementById('planning-form');
+    const icon = document.getElementById('planning-icon');
+    form.classList.toggle('collapsed');
+    icon.textContent = form.classList.contains('collapsed') ? '+' : '-';
+}
+
+function addPrecedent() {
+    const list = document.getElementById('precedents-list');
+    const id = precedentCount++;
+    const row = document.createElement('div');
+    row.className = 'precedent-row';
+    row.id = `precedent-${id}`;
+    row.innerHTML = `
+        <div class="form-row form-row-grid">
+            <div class="form-group">
+                <label>Reference</label>
+                <input type="text" name="precedent_ref_${id}" placeholder="APP/2023/001">
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select name="precedent_type_${id}">
+                    <option value="extension_loft">Loft Conversion</option>
+                    <option value="extension_rear">Rear Extension</option>
+                    <option value="conversion_flats">Convert to Flats</option>
+                    <option value="conversion_hmo">Convert to HMO</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Approved?</label>
+                <select name="precedent_approved_${id}">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Distance (m)</label>
+                <input type="number" name="precedent_distance_${id}" min="0" placeholder="50">
+            </div>
+            <button type="button" class="btn btn-sm" onclick="removePrecedent(${id})" style="align-self:end;background:#dc2626;color:white;">X</button>
+        </div>
+    `;
+    list.appendChild(row);
+}
+
+function removePrecedent(id) {
+    const row = document.getElementById(`precedent-${id}`);
+    if (row) row.remove();
+}
+</script>
+
+<section class="info-section">
+    <h2>How It Works</h2>
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>1. Search</h3>
+            <p>Enter your criteria: location, bedrooms, price range, and target BMV percentage.</p>
+        </div>
+        <div class="info-card">
+            <h3>2. Analyze</h3>
+            <p>The engine fetches listings and calculates BMV scores based on estimated values.</p>
+        </div>
+        <div class="info-card">
+            <h3>3. Evaluate</h3>
+            <p>Review scored results sorted by deal quality. Strong deals appear first.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
