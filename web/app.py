@@ -5,16 +5,26 @@ Phase 7: Planning Context Input + UI Surfacing
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import re
+import sys
 
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
-from core import SearchCriteria, BMVScorer
-from scraper import MockScraper
+from core import SearchCriteria, BMVScorer, DealAnalyzer, Confidence, Recommendation
+
+# Import submission routes
+from web.submission_routes import router as submission_router
+from scraper import AuctionHouseLondonScraper
+
+# Add reporting module to path
+REPORTING_DIR = Path(__file__).parent.parent / "reporting"
+if str(REPORTING_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(REPORTING_DIR.parent))
 
 
 @dataclass
@@ -249,6 +259,109 @@ def parse_planning_context(form_data: dict) -> PlanningContext:
 BASE_DIR = Path(__file__).parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
+REPORTS_DIR = BASE_DIR.parent / "reports"
+
+# UK Postcode validation pattern
+UK_POSTCODE_PATTERN = re.compile(
+    r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$",
+    re.IGNORECASE
+)
+
+# Data source URL validation
+VALID_SOURCE_DOMAINS = ["auctionhouselondon.co.uk"]
+
+
+def validate_listing(listing) -> bool:
+    """
+    Validate that a listing contains real, verifiable data.
+
+    Returns True if listing passes all validation checks.
+    Returns False if listing appears to be dummy/placeholder data.
+    """
+    # Check for non-empty address
+    if not listing.address or len(listing.address.strip()) < 5:
+        return False
+
+    # Check for valid UK postcode
+    postcode = getattr(listing, 'postcode', '')
+    if not postcode or not UK_POSTCODE_PATTERN.match(postcode.strip()):
+        return False
+
+    # Check for valid source URL
+    url = getattr(listing, 'url', '')
+    if not url:
+        return False
+
+    # Must point to a valid source domain
+    is_valid_source = any(domain in url for domain in VALID_SOURCE_DOMAINS)
+    if not is_valid_source:
+        return False
+
+    # Check source field
+    source = getattr(listing, 'source', '')
+    if source.lower() in ('mock', 'sample', 'test', 'dummy'):
+        return False
+
+    return True
+
+
+def filter_validated_listings(listings: list) -> list:
+    """
+    Filter listings to only include validated real data.
+
+    No silent fallbacks - returns empty list if no valid listings.
+    """
+    return [l for l in listings if validate_listing(l)]
+
+
+# =============================================================================
+# API Request/Response Models
+# =============================================================================
+
+class OpportunityInput(BaseModel):
+    """Opportunity data for PDF generation."""
+    opportunity_id: str
+    address: str
+    area: str
+    city: str
+    postcode: str
+    property_type: str
+    asking_price: int
+    estimated_value: int
+    bmv_percent: float
+    potential_profit: int
+    roi_percent: float
+    bedrooms: int
+    bathrooms: int
+    days_on_market: int
+    overall_score: float
+    recommendation: str  # strong, moderate, weak, avoid, overpriced
+    conviction: str  # high, medium, low
+    key_risks: List[str] = []
+    key_strengths: List[str] = []
+    # Comp Engine evidence (v1.0)
+    comps_used: int = 0
+    comp_radius_miles: float = 0.0
+    comp_date_range_months: int = 0
+    valuation_statement: str = ""
+    # Planning context
+    planning_score: Optional[int] = None
+    planning_label: Optional[str] = None
+    planning_uplift_low: Optional[float] = None
+    planning_uplift_high: Optional[float] = None
+    planning_positive_factors: List[str] = []
+    planning_negative_factors: List[str] = []
+
+
+class GenerateReportRequest(BaseModel):
+    """Request body for PDF generation."""
+    reference_id: str
+    client_name: str
+    location: str
+    capital_range_low: int
+    capital_range_high: int
+    target_bmv_percent: float = 15.0
+    opportunities: List[OpportunityInput]
 
 
 def create_app() -> FastAPI:
@@ -262,12 +375,24 @@ def create_app() -> FastAPI:
     # Mount static files
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+    # Mount reports directory for PDF serving
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/reports", StaticFiles(directory=REPORTS_DIR), name="reports")
+
+    # Include submission routes
+    app.include_router(submission_router)
+
     # Templates
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-    # Initialize components
-    scraper = MockScraper()
-    scorer = BMVScorer()
+    # Initialize components — REAL DATA ONLY
+    # No mock/dummy data allowed
+    scraper = AuctionHouseLondonScraper()
+
+    # Use new DealAnalyzer with Comp Engine integration
+    # (Legacy BMVScorer is still available but deprecated)
+    deal_analyzer = DealAnalyzer()
+    scorer = BMVScorer()  # Keep for backward compatibility
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
@@ -311,27 +436,84 @@ def create_app() -> FastAPI:
         planning_context = parse_planning_context(form_dict)
         planning_assessment = assess_planning(planning_context) if planning_context.has_data() else None
 
-        # Fetch listings
-        listings = await scraper.search(criteria)
+        # Fetch REAL listings from Auction House London
+        # No dummy data fallback - empty results are valid
+        try:
+            listings = await scraper.search(criteria)
+        except Exception as e:
+            # Network/scraping error - show clear message
+            return templates.TemplateResponse(
+                "results.html",
+                {
+                    "request": request,
+                    "title": "Search Results",
+                    "criteria": criteria,
+                    "analyses": [],
+                    "total_count": 0,
+                    "planning_context": None,
+                    "planning_assessment": None,
+                    "has_eligible_opportunities": False,
+                    "error_message": "Unable to fetch live auction listings. Please try again later.",
+                },
+            )
+
+        # Validate all listings - reject any that don't meet data integrity requirements
+        listings = filter_validated_listings(listings)
 
         # Filter by max price if specified
         if criteria.max_price:
             listings = [l for l in listings if l.asking_price <= criteria.max_price]
 
-        # Analyze listings
-        analyses = scorer.analyze_batch(listings, criteria)
+        # Handle zero listings gracefully - NO silent fallback to dummy data
+        if not listings:
+            return templates.TemplateResponse(
+                "results.html",
+                {
+                    "request": request,
+                    "title": "Search Results",
+                    "criteria": criteria,
+                    "analyses": [],
+                    "total_count": 0,
+                    "planning_context": planning_context if planning_context.has_data() else None,
+                    "planning_assessment": planning_assessment,
+                    "has_eligible_opportunities": False,
+                    "no_listings_message": "No live auction listings match this criteria.",
+                },
+            )
+
+        # Analyze listings using Comp Engine-backed DealAnalyzer
+        # This replaces the heuristic BMVScorer with factual Land Registry data
+        analyses = deal_analyzer.analyze_batch(listings, criteria)
 
         # Add planning assessment to each analysis for combined opportunity check
         for analysis in analyses:
             analysis.planning = planning_assessment
             # Check for combined opportunity (BMV + planning upside)
             if planning_assessment and planning_assessment.has_upside:
-                if hasattr(analysis, 'recommendation') and analysis.recommendation in ('Strong', 'Moderate'):
+                rec = getattr(analysis, 'recommendation', '')
+                if rec in ('Strong', 'Moderate'):
                     analysis.combined_opportunity = True
                 else:
                     analysis.combined_opportunity = False
             else:
                 analysis.combined_opportunity = False
+
+        # Compute eligibility flag for PDF generation button
+        # Phase B: Enforce confidence & recommendation gating
+        # Only Strong/Moderate recommendations with High/Medium confidence are eligible
+        def is_eligible(analysis) -> bool:
+            rec = getattr(analysis, 'recommendation', '').lower()
+            conf = getattr(analysis, 'confidence', '').lower()
+            # Strong/Moderate recommendations only
+            if rec not in {'strong', 'moderate'}:
+                return False
+            # For PDF generation, require at least Medium confidence
+            # Low confidence deals should not be presented to clients
+            if conf == 'low':
+                return False
+            return True
+
+        has_eligible_opportunities = any(is_eligible(a) for a in analyses)
 
         return templates.TemplateResponse(
             "results.html",
@@ -343,8 +525,135 @@ def create_app() -> FastAPI:
                 "total_count": len(analyses),
                 "planning_context": planning_context if planning_context.has_data() else None,
                 "planning_assessment": planning_assessment,
+                "has_eligible_opportunities": has_eligible_opportunities,
             },
         )
+
+    @app.post("/api/generate-report")
+    async def generate_report_endpoint(request_data: GenerateReportRequest):
+        """
+        Generate a Capital Opportunity Memorandum PDF.
+
+        Accepts evaluated search results and generates a branded PDF.
+        Respects eligibility gating (Strong/Moderate only, max 3).
+
+        Returns:
+            - success: true with pdf_url and filename if generated
+            - success: false with message if no qualifying opportunities
+        """
+        from datetime import datetime
+        from reporting.pdf_generator import (
+            generate_report,
+            ReportSuccess,
+            ReportNoQualifyingOpportunities,
+        )
+        from reporting.schemas import (
+            Mandate,
+            MandateParameters,
+            OpportunityMemo,
+            ScoreBreakdown,
+            PlanningContext,
+            ConvictionRating,
+            CompEvidence,
+        )
+
+        # Map conviction strings to enum
+        conviction_map = {
+            "high": ConvictionRating.HIGH,
+            "medium": ConvictionRating.MEDIUM,
+            "low": ConvictionRating.LOW,
+        }
+
+        # Convert input opportunities to schema format
+        opportunities = []
+        for opp in request_data.opportunities:
+            # Build planning context if provided
+            planning = None
+            if opp.planning_score is not None:
+                planning = PlanningContext(
+                    score=opp.planning_score,
+                    label=opp.planning_label or "medium",
+                    uplift_percent_low=opp.planning_uplift_low or 0,
+                    uplift_percent_high=opp.planning_uplift_high or 0,
+                    positive_factors=opp.planning_positive_factors,
+                    negative_factors=opp.planning_negative_factors,
+                )
+
+            # Build comp evidence if available
+            comp_evidence = None
+            if opp.comps_used > 0:
+                comp_evidence = CompEvidence(
+                    comps_used=opp.comps_used,
+                    comp_radius_miles=opp.comp_radius_miles,
+                    comp_date_range_months=opp.comp_date_range_months,
+                    valuation_statement=opp.valuation_statement,
+                )
+
+            opportunities.append(OpportunityMemo(
+                opportunity_id=opp.opportunity_id,
+                address=opp.address,
+                area=opp.area,
+                city=opp.city,
+                postcode=opp.postcode,
+                property_type=opp.property_type,
+                asking_price=opp.asking_price,
+                estimated_value=opp.estimated_value,
+                bmv_percent=opp.bmv_percent,
+                potential_profit=opp.potential_profit,
+                roi_percent=opp.roi_percent,
+                bedrooms=opp.bedrooms,
+                bathrooms=opp.bathrooms,
+                days_on_market=opp.days_on_market,
+                scores=ScoreBreakdown(
+                    bmv_score=opp.overall_score * 0.4,
+                    urgency_score=opp.overall_score * 0.2,
+                    location_score=50.0,
+                    value_score=opp.overall_score * 0.4,
+                    overall_score=opp.overall_score,
+                ),
+                recommendation=opp.recommendation.lower(),
+                conviction=conviction_map.get(opp.conviction.lower(), ConvictionRating.MEDIUM),
+                key_risks=opp.key_risks,
+                key_strengths=opp.key_strengths,
+                comp_evidence=comp_evidence,
+                planning=planning,
+            ))
+
+        # Build mandate
+        mandate = Mandate(
+            reference_id=request_data.reference_id,
+            client_name=request_data.client_name,
+            report_date=datetime.now().strftime("%Y-%m-%d"),
+            generated_at=datetime.now().isoformat(),
+            parameters=MandateParameters(
+                location=request_data.location,
+                min_beds=1,
+                max_beds=None,
+                min_baths=1,
+                max_price=request_data.capital_range_high,
+                target_bmv_percent=request_data.target_bmv_percent,
+            ),
+            capital_range_low=request_data.capital_range_low,
+            capital_range_high=request_data.capital_range_high,
+            opportunities=opportunities,
+        )
+
+        # Generate report (eligibility gate is applied inside)
+        result = generate_report(mandate)
+
+        if isinstance(result, ReportSuccess):
+            filename = result.path.name
+            return JSONResponse({
+                "success": True,
+                "pdf_url": f"/reports/{filename}",
+                "filename": filename,
+                "opportunities_included": result.opportunities_included,
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "message": result.message,
+            })
 
     @app.get("/api/health")
     async def health():

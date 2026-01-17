@@ -5,7 +5,7 @@ Generates realistic placeholder data without external requests.
 
 import random
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from uuid import uuid4
 
 from core.models import PropertyListing, SearchCriteria
@@ -25,7 +25,7 @@ class MockScraper:
 
     PROPERTY_TYPES = ["terraced", "semi-detached", "detached", "flat", "maisonette"]
 
-    def __init__(self, seed: int | None = None):
+    def __init__(self, seed: Optional[int] = None):
         """
         Initialize mock scraper.
 
@@ -64,7 +64,7 @@ class MockScraper:
 
         return listings
 
-    async def get_listing_details(self, listing_id: str) -> PropertyListing | None:
+    async def get_listing_details(self, listing_id: str) -> Optional[PropertyListing]:
         """
         Generate a mock listing with the given ID.
 
@@ -91,7 +91,7 @@ class MockScraper:
         area: str,
         city: str,
         min_beds: int = 1,
-        max_beds: int | None = None,
+        max_beds: Optional[int] = None,
         min_baths: int = 1,
     ) -> PropertyListing:
         """Generate a single mock listing."""

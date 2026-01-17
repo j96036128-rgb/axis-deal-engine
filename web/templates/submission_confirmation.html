@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}Submission Confirmed - Axis Allocation{% endblock %}
+
+{% block content %}
+<div class="confirmation-container">
+    <header class="confirmation-header">
+        <div class="success-icon">&#10003;</div>
+        <h1>Submission Received</h1>
+        <p class="property-id">Property ID: <strong>{{ submission.property_id }}</strong></p>
+    </header>
+
+    <section class="summary-section">
+        <h2>Submission Summary</h2>
+
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="label">Address</span>
+                <span class="value">{{ submission.full_address }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Postcode</span>
+                <span class="value">{{ submission.postcode }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Property Type</span>
+                <span class="value">{{ submission.property_type.replace('-', ' ').replace('_', ' ').title() }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Tenure</span>
+                <span class="value">{{ submission.tenure.title() }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Floor Area</span>
+                <span class="value">{{ submission.floor_area_sqm }} sqm</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Guide Price</span>
+                <span class="value">£{{ "{:,}".format(submission.guide_price) }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Sale Route</span>
+                <span class="value">{{ submission.sale_route.replace('_', ' ').title() }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Submitted By</span>
+                <span class="value">{{ submission.agent_name }} ({{ submission.agent_firm }})</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="status-section">
+        <h2>Completeness Status</h2>
+
+        {% if completeness.is_complete %}
+        <div class="status-badge complete">
+            <span class="badge-icon">&#10003;</span>
+            Complete - Ready for Evaluation
+        </div>
+        {% else %}
+        <div class="status-badge incomplete">
+            <span class="badge-icon">!</span>
+            Incomplete - Documents Required
+        </div>
+
+        {% if completeness.missing_documents %}
+        <div class="missing-docs">
+            <h3>Missing Documents:</h3>
+            <ul>
+                {% for doc in completeness.missing_documents %}
+                <li>{{ doc.replace('_', ' ').title() }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="document-summary">
+            <p>Documents uploaded: <strong>{{ completeness.document_count }}</strong> of <strong>{{ completeness.required_document_count }}</strong> required</p>
+        </div>
+    </section>
+
+    {% if not completeness.is_complete %}
+    <section class="upload-section">
+        <h2>Upload Additional Documents</h2>
+
+        <form method="POST" action="/submit/upload/{{ submission.property_id }}" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+                <label for="document_type">Document Type</label>
+                <select id="document_type" name="document_type" required>
+                    {% for doc in completeness.missing_documents %}
+                    <option value="{{ doc }}">{{ doc.replace('_', ' ').title() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="document">Select File</label>
+                <input type="file" id="document" name="document" required
+                       accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+            </div>
+
+            <button type="submit" class="upload-btn">Upload Document</button>
+        </form>
+    </section>
+    {% endif %}
+
+    <section class="info-section">
+        <h2>What Happens Next</h2>
+        <ol class="next-steps">
+            <li>
+                <strong>Document Verification</strong>
+                <p>Our team will verify the submitted documents</p>
+            </li>
+            <li>
+                <strong>Deal Engine Evaluation</strong>
+                <p>Property will be evaluated against comparable sales data</p>
+            </li>
+            <li>
+                <strong>Notification</strong>
+                <p>You will be notified of the evaluation outcome at {{ submission.agent_email }}</p>
+            </li>
+        </ol>
+    </section>
+
+    <div class="actions">
+        <a href="/submit/" class="btn btn-secondary">Submit Another Property</a>
+        <a href="/submit/admin/{{ submission.property_id }}" class="btn btn-primary">View Full Details</a>
+    </div>
+</div>
+
+<style>
+.confirmation-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.confirmation-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: #f0fdf4;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+}
+
+.confirmation-header h1 {
+    margin: 0;
+    color: #166534;
+}
+
+.property-id {
+    margin: 0.5rem 0 0;
+    font-family: monospace;
+    font-size: 1rem;
+}
+
+.summary-section,
+.status-section,
+.upload-section,
+.info-section {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-section h2,
+.status-section h2,
+.upload-section h2,
+.info-section h2 {
+    margin: 0 0 1rem;
+    font-size: 1.25rem;
+    color: #1a1a2e;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.summary-item .label {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-item .value {
+    display: block;
+    font-weight: 500;
+    color: #1a1a2e;
+    margin-top: 0.25rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.status-badge.complete {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.incomplete {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-icon {
+    font-size: 1.25rem;
+}
+
+.missing-docs {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fef3c7;
+    border-radius: 4px;
+}
+
+.missing-docs h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    color: #92400e;
+}
+
+.missing-docs ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.document-summary {
+    margin-top: 1rem;
+    color: #666;
+}
+
+.upload-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.upload-form .form-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.upload-form label {
+    display: block;
+    font-size: 0.875rem;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.upload-form select,
+.upload-form input[type="file"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.upload-btn {
+    background: #4a90d9;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.upload-btn:hover {
+    background: #357abd;
+}
+
+.next-steps {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.next-steps li {
+    margin-bottom: 1rem;
+}
+
+.next-steps strong {
+    color: #1a1a2e;
+}
+
+.next-steps p {
+    margin: 0.25rem 0 0;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-primary {
+    background: #1a1a2e;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2d2d4a;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+</style>
+{% endblock %}

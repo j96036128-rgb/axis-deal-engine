@@ -25,5 +25,103 @@
             <p>Internal Use Only — Axis Deal Engine</p>
         </div>
     </footer>
+
+    <script>
+    // PDF Generation Handler
+    async function generatePDF() {
+        const btn = document.getElementById('generate-pdf-btn');
+        const statusEl = document.getElementById('pdf-status');
+        const statusContent = document.getElementById('pdf-status-content');
+
+        if (!btn || !statusEl || !statusContent) return;
+
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.textContent = 'Generating...';
+
+        statusEl.style.display = 'block';
+        statusEl.className = 'pdf-status loading';
+        statusContent.textContent = 'Preparing memorandum...';
+
+        try {
+            // Get search data from embedded JSON
+            const dataEl = document.getElementById('search-data');
+            if (!dataEl) throw new Error('Search data not found');
+
+            const searchData = JSON.parse(dataEl.textContent);
+
+            // Generate reference ID
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const refId = `${dateStr}-${String(Math.floor(Math.random() * 999)).padStart(3, '0')}`;
+
+            // Calculate capital range from opportunities
+            const prices = searchData.analyses.map(a => a.asking_price);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+
+            // Build request payload
+            const payload = {
+                reference_id: refId,
+                client_name: 'Internal Review',
+                location: searchData.location,
+                capital_range_low: minPrice,
+                capital_range_high: maxPrice,
+                target_bmv_percent: 15.0,
+                opportunities: searchData.analyses
+            };
+
+            // Call API
+            const response = await fetch('/api/generate-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Success - show PDF link and download option
+                statusEl.className = 'pdf-status success';
+                statusContent.innerHTML = `
+                    <span class="status-message">Memorandum generated (${result.opportunities_included} opportunities)</span>
+                    <div class="pdf-actions">
+                        <a href="${result.pdf_url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>
+                        <a href="${result.pdf_url}" download="${result.filename}" class="btn btn-secondary btn-sm">Download PDF</a>
+                    </div>
+                `;
+
+                // Open PDF in new tab immediately
+                window.open(result.pdf_url, '_blank');
+
+                // Reset button
+                btn.textContent = 'Regenerate PDF';
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            } else {
+                // No qualifying opportunities
+                statusEl.className = 'pdf-status warning';
+                statusContent.textContent = result.message;
+
+                // Reset button
+                btn.textContent = 'Generate Client Memorandum (PDF)';
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        } catch (error) {
+            // Error handling - keep it clean for user
+            statusEl.className = 'pdf-status error';
+            statusContent.textContent = 'Unable to generate memorandum. Please try again.';
+
+            // Reset button
+            btn.textContent = 'Generate Client Memorandum (PDF)';
+            btn.classList.remove('loading');
+            btn.disabled = false;
+
+            console.error('PDF generation error:', error);
+        }
+    }
+    </script>
 </body>
 </html>

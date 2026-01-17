@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Property Submission - Axis Allocation{% endblock %}
+
+{% block content %}
+<div class="submission-container">
+    <header class="submission-header">
+        <h1>Property Submission Portal</h1>
+        <p class="subtitle">Private submission for authorised agents only</p>
+    </header>
+
+    {% if error %}
+    <div class="error-banner">
+        <strong>Submission Error:</strong> {{ error }}
+        {% if errors %}
+        <ul>
+            {% for err in errors %}
+            <li>{{ err }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/submit/" enctype="multipart/form-data" class="submission-form">
+
+        <!-- Property Details Section -->
+        <section class="form-section">
+            <h2>Property Details</h2>
+            <p class="section-note">All fields are mandatory. No marketing descriptions.</p>
+
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="full_address">Full Property Address *</label>
+                    <input type="text"
+                           id="full_address"
+                           name="full_address"
+                           required
+                           placeholder="123 Example Street, Town, County"
+                           value="{{ form_data.full_address if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="postcode">Postcode *</label>
+                    <input type="text"
+                           id="postcode"
+                           name="postcode"
+                           required
+                           pattern="[A-Za-z]{1,2}[0-9][A-Za-z0-9]?\s?[0-9][A-Za-z]{2}"
+                           placeholder="SW1A 1AA"
+                           value="{{ form_data.postcode if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="property_type">Property Type *</label>
+                    <select id="property_type" name="property_type" required>
+                        <option value="">Select type...</option>
+                        {% for pt in property_types %}
+                        <option value="{{ pt }}" {% if form_data and form_data.property_type == pt %}selected{% endif %}>
+                            {{ pt.replace('-', ' ').replace('_', ' ').title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tenure">Tenure *</label>
+                    <select id="tenure" name="tenure" required onchange="toggleLeaseholdFields()">
+                        <option value="">Select tenure...</option>
+                        {% for t in tenures %}
+                        <option value="{{ t }}" {% if form_data and form_data.tenure == t %}selected{% endif %}>
+                            {{ t.title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="floor_area_sqm">Floor Area (sqm) *</label>
+                    <input type="number"
+                           id="floor_area_sqm"
+                           name="floor_area_sqm"
+                           required
+                           min="1"
+                           placeholder="85"
+                           value="{{ form_data.floor_area_sqm if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="guide_price">Guide Price (£) *</label>
+                    <input type="number"
+                           id="guide_price"
+                           name="guide_price"
+                           required
+                           min="1"
+                           placeholder="350000"
+                           value="{{ form_data.guide_price if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="sale_route">Expected Sale Route *</label>
+                    <select id="sale_route" name="sale_route" required>
+                        <option value="">Select route...</option>
+                        {% for sr in sale_routes %}
+                        <option value="{{ sr }}" {% if form_data and form_data.sale_route == sr %}selected{% endif %}>
+                            {{ sr.replace('_', ' ').title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Optional Property Fields -->
+            <h3>Additional Property Information</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="bedrooms">Bedrooms</label>
+                    <input type="number" id="bedrooms" name="bedrooms" min="0"
+                           value="{{ form_data.bedrooms if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="bathrooms">Bathrooms</label>
+                    <input type="number" id="bathrooms" name="bathrooms" min="0"
+                           value="{{ form_data.bathrooms if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="year_built">Year Built</label>
+                    <input type="number" id="year_built" name="year_built" min="1600" max="2030"
+                           value="{{ form_data.year_built if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="council_tax_band">Council Tax Band</label>
+                    <select id="council_tax_band" name="council_tax_band">
+                        <option value="">Select band...</option>
+                        {% for band in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] %}
+                        <option value="{{ band }}">Band {{ band }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="epc_rating">EPC Rating</label>
+                    <select id="epc_rating" name="epc_rating">
+                        <option value="">Select rating...</option>
+                        {% for rating in ['A', 'B', 'C', 'D', 'E', 'F', 'G'] %}
+                        <option value="{{ rating }}">{{ rating }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Leasehold Section (conditionally shown) -->
+        <section class="form-section leasehold-fields" id="leasehold-section" style="display: none;">
+            <h2>Leasehold Details</h2>
+            <p class="section-note">Required for leasehold properties</p>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="lease_years_remaining">Lease Years Remaining</label>
+                    <input type="number" id="lease_years_remaining" name="lease_years_remaining" min="0"
+                           value="{{ form_data.lease_years_remaining if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="ground_rent_annual">Ground Rent (£/year)</label>
+                    <input type="number" id="ground_rent_annual" name="ground_rent_annual" min="0"
+                           value="{{ form_data.ground_rent_annual if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="service_charge_annual">Service Charge (£/year)</label>
+                    <input type="number" id="service_charge_annual" name="service_charge_annual" min="0"
+                           value="{{ form_data.service_charge_annual if form_data else '' }}">
+                </div>
+            </div>
+        </section>
+
+        <!-- Agent Details Section -->
+        <section class="form-section">
+            <h2>Agent Details</h2>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="agent_firm">Firm / Company Name *</label>
+                    <input type="text" id="agent_firm" name="agent_firm" required
+                           placeholder="Smith & Partners"
+                           value="{{ form_data.agent_firm if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="agent_name">Your Name *</label>
+                    <input type="text" id="agent_name" name="agent_name" required
+                           placeholder="John Smith"
+                           value="{{ form_data.agent_name if form_data else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="agent_email">Email Address *</label>
+                    <input type="email" id="agent_email" name="agent_email" required
+                           placeholder="john@smithpartners.co.uk"
+                           value="{{ form_data.agent_email if form_data else '' }}">
+                </div>
+            </div>
+        </section>
+
+        <!-- Document Upload Section -->
+        <section class="form-section">
+            <h2>Mandatory Documents</h2>
+            <p class="section-note">Upload required documents. Accepted formats: PDF, JPG, PNG, TIFF (max 10MB each)</p>
+
+            <div class="document-grid">
+                <div class="document-upload">
+                    <label for="title_register">
+                        <span class="doc-label">Title Register *</span>
+                        <span class="doc-hint">Official Land Registry document</span>
+                    </label>
+                    <input type="file" id="title_register" name="title_register"
+                           accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+                </div>
+
+                <div class="document-upload">
+                    <label for="epc_document">
+                        <span class="doc-label">EPC Certificate *</span>
+                        <span class="doc-hint">Energy Performance Certificate</span>
+                    </label>
+                    <input type="file" id="epc_document" name="epc_document"
+                           accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+                </div>
+
+                <div class="document-upload">
+                    <label for="floor_plan">
+                        <span class="doc-label">Floor Plan *</span>
+                        <span class="doc-hint">Measured floor plan</span>
+                    </label>
+                    <input type="file" id="floor_plan" name="floor_plan"
+                           accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+                </div>
+
+                <div class="document-upload leasehold-doc" id="lease-upload" style="display: none;">
+                    <label for="lease_document">
+                        <span class="doc-label">Lease Document *</span>
+                        <span class="doc-hint">Required for leasehold properties</span>
+                    </label>
+                    <input type="file" id="lease_document" name="lease_document"
+                           accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+                </div>
+
+                <div class="document-upload">
+                    <label for="planning_approval">
+                        <span class="doc-label">Planning Approval</span>
+                        <span class="doc-hint">If applicable</span>
+                    </label>
+                    <input type="file" id="planning_approval" name="planning_approval"
+                           accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+                </div>
+            </div>
+        </section>
+
+        <!-- Submission Notice -->
+        <section class="form-section notice-section">
+            <div class="notice">
+                <h3>Submission Terms</h3>
+                <ul>
+                    <li>All information provided must be accurate and factual</li>
+                    <li>Submissions are immutable - changes create new versions</li>
+                    <li>Documents will be verified before evaluation</li>
+                    <li>No marketing language or opinions - facts only</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="form-actions">
+            <button type="submit" class="submit-btn">Submit Property</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleLeaseholdFields() {
+    const tenure = document.getElementById('tenure').value;
+    const leaseholdSection = document.getElementById('leasehold-section');
+    const leaseUpload = document.getElementById('lease-upload');
+
+    if (tenure === 'leasehold') {
+        leaseholdSection.style.display = 'block';
+        leaseUpload.style.display = 'block';
+    } else {
+        leaseholdSection.style.display = 'none';
+        leaseUpload.style.display = 'none';
+    }
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', toggleLeaseholdFields);
+</script>
+
+<style>
+.submission-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.submission-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.submission-header h1 {
+    margin: 0;
+    color: #1a1a2e;
+}
+
+.subtitle {
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.error-banner {
+    background: #fee;
+    border: 1px solid #c00;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    color: #900;
+}
+
+.error-banner ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.form-section {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    color: #1a1a2e;
+}
+
+.form-section h3 {
+    margin: 1.5rem 0 1rem 0;
+    font-size: 1rem;
+    color: #444;
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+}
+
+.section-note {
+    color: #666;
+    font-size: 0.875rem;
+    margin: 0 0 1rem 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #333;
+    font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4a90d9;
+    box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+}
+
+.document-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.document-upload {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.document-upload:hover {
+    border-color: #4a90d9;
+}
+
+.document-upload label {
+    display: block;
+    cursor: pointer;
+}
+
+.doc-label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+}
+
+.doc-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.document-upload input[type="file"] {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.notice-section {
+    background: #f8f9fa;
+}
+
+.notice h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.notice ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #555;
+}
+
+.notice li {
+    margin-bottom: 0.25rem;
+}
+
+.form-actions {
+    text-align: center;
+    padding-top: 1rem;
+}
+
+.submit-btn {
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.submit-btn:hover {
+    background: #2d2d4a;
+}
+</style>
+{% endblock %}

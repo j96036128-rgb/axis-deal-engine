@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "jinja2>=3.1.0",
     "python-multipart>=0.0.6",
+    "reportlab>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -24,5 +25,33 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 target-version = "py311"
+exclude = [".git", "__pycache__", ".vscode", "node_modules", "reports"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.vscode
+  | __pycache__
+  | reports
+  | node_modules
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip = [".git", "__pycache__", ".vscode", "node_modules", "reports"]
+known_first_party = ["core", "scraper", "reporting", "deal_engine", "web"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests that require network access (deselect with '-m \"not integration\"')",
+]

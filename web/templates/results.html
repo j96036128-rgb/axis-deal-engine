@@ -7,8 +7,89 @@
         Found <strong>{{ total_count }}</strong> properties in <strong>{{ criteria.location }}</strong>
         {% if criteria.max_price %}under £{{ "{:,}".format(criteria.max_price) }}{% endif %}
     </p>
-    <a href="/" class="btn btn-secondary">New Search</a>
+    <div class="results-actions">
+        <a href="/" class="btn btn-secondary">New Search</a>
+        {% if has_eligible_opportunities %}
+        <button type="button" id="generate-pdf-btn" class="btn btn-primary btn-pdf" onclick="generatePDF()">
+            Generate Client Memorandum (PDF)
+        </button>
+        {% endif %}
+    </div>
 </section>
+
+<!-- PDF Generation Status -->
+<div id="pdf-status" class="pdf-status" style="display: none;">
+    <div id="pdf-status-content"></div>
+</div>
+
+<!-- Hidden data for PDF generation -->
+<script id="search-data" type="application/json">
+{
+    "location": {{ criteria.location|tojson }},
+    "analyses": [
+        {% for analysis in analyses %}
+        {
+            "opportunity_id": "OPP-{{ loop.index }}",
+            "address": {{ analysis.listing.address|tojson }},
+            "area": {{ analysis.listing.area|tojson }},
+            "city": {{ analysis.listing.area|tojson }},
+            "postcode": {{ analysis.listing.postcode|tojson }},
+            "property_type": {{ analysis.listing.property_type|tojson }},
+            "asking_price": {{ analysis.listing.asking_price }},
+            "estimated_value": {{ analysis.estimated_value }},
+            "bmv_percent": {{ analysis.bmv_percent }},
+            "potential_profit": {{ analysis.potential_profit }},
+            "roi_percent": {{ analysis.roi_percent|round(1) }},
+            "bedrooms": {{ analysis.listing.bedrooms }},
+            "bathrooms": {{ analysis.listing.bathrooms|default(1) }},
+            "days_on_market": {{ analysis.listing.days_on_market }},
+            "overall_score": {{ analysis.overall_score }},
+            "recommendation": {{ analysis.recommendation|lower|tojson }},
+            "conviction": {{ analysis.confidence|lower|tojson }},
+            "key_risks": {{ analysis.notes|tojson }},
+            "key_strengths": [],
+            "comps_used": {{ analysis.comps_used }},
+            "comp_radius_miles": {% if analysis.valuation %}{{ analysis.valuation.comp_radius_miles }}{% else %}0{% endif %},
+            "comp_date_range_months": {% if analysis.valuation %}{{ analysis.valuation.comp_date_range_months }}{% else %}0{% endif %},
+            "valuation_statement": {{ analysis.valuation_statement|tojson }}
+            {% if analysis.planning %},
+            "planning_score": {{ analysis.planning.score }},
+            "planning_label": {{ analysis.planning.label|tojson }},
+            "planning_uplift_low": {{ analysis.planning.uplift_percent_low }},
+            "planning_uplift_high": {{ analysis.planning.uplift_percent_high }},
+            "planning_positive_factors": {{ analysis.planning.positive_factors|tojson }},
+            "planning_negative_factors": {{ analysis.planning.negative_factors|tojson }}
+            {% endif %}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
+<!-- Error / No Results Messages -->
+{% if error_message %}
+<section class="error-message">
+    <h2>Connection Error</h2>
+    <p>{{ error_message }}</p>
+    <a href="/" class="btn btn-primary">Try Again</a>
+</section>
+{% elif no_listings_message %}
+<section class="no-results">
+    <h2>No Live Listings Available</h2>
+    <p>{{ no_listings_message }}</p>
+    <p class="source-note">Data source: <strong>Auction House London</strong> — real-time auction inventory only.</p>
+    <a href="/" class="btn btn-primary">Adjust Search</a>
+</section>
+{% else %}
+
+<!-- Data Source Attribution -->
+<div class="source-attribution">
+    <span class="source-label">Live data from:</span>
+    <a href="https://auctionhouselondon.co.uk/current-auction" target="_blank" rel="noopener" class="source-link">
+        Auction House London
+    </a>
+    <span class="source-note">— Click any listing to verify on source site</span>
+</div>
 
 {% if planning_assessment %}
 <section class="planning-summary">
@@ -60,9 +141,9 @@
                 <th>Type</th>
                 <th>Beds</th>
                 <th>Asking</th>
-                <th>Est. Value</th>
+                <th>EMV (Comps)</th>
                 <th>BMV %</th>
-                <th>Score</th>
+                <th>Confidence</th>
                 <th>Recommendation</th>
             </tr>
         </thead>
@@ -77,34 +158,58 @@
             <tr class="recommendation-{{ analysis.recommendation }} combined-opportunity">
                 {% endif %}
                 <td class="col-address">
-                    <div class="address-primary">{{ analysis.listing.address }}</div>
-                    <div class="address-secondary">{{ analysis.listing.area }}, {{ analysis.listing.postcode }}</div>
+                    <a href="{{ analysis.listing.url }}" target="_blank" rel="noopener" class="listing-link">
+                        <div class="address-primary">{{ analysis.listing.address }}</div>
+                        <div class="address-secondary">{{ analysis.listing.area }}, {{ analysis.listing.postcode }}</div>
+                        <div class="source-badge">Source: {{ analysis.listing.source }}</div>
+                    </a>
                 </td>
                 <td>{{ analysis.listing.property_type|capitalize }}</td>
                 <td>{{ analysis.listing.bedrooms }}</td>
                 <td class="col-price">£{{ "{:,}".format(analysis.listing.asking_price) }}</td>
-                <td class="col-price">£{{ "{:,}".format(analysis.listing.estimated_value) }}</td>
+                <td class="col-price col-emv">
+                    {% if analysis.valuation and analysis.valuation.estimated_market_value > 0 %}
+                    £{{ "{:,}".format(analysis.estimated_value) }}
+                    <span class="comps-count">({{ analysis.comps_used }} comps)</span>
+                    {% else %}
+                    <span class="no-comps">No comps</span>
+                    {% endif %}
+                </td>
                 <td class="col-bmv {% if analysis.bmv_percent >= 15 %}bmv-excellent{% elif analysis.bmv_percent >= 10 %}bmv-good{% elif analysis.bmv_percent >= 5 %}bmv-fair{% else %}bmv-low{% endif %}">
+                    {% if analysis.valuation and analysis.valuation.estimated_market_value > 0 %}
                     {{ analysis.bmv_percent }}%
+                    {% else %}
+                    —
+                    {% endif %}
                     {% if analysis.planning and analysis.planning.has_upside %}
                     <span class="planning-badge">+Planning</span>
                     {% endif %}
                 </td>
-                <td class="col-score">
-                    <span class="score-badge">{{ analysis.overall_score }}</span>
+                <td class="col-confidence">
+                    <span class="confidence-badge confidence-{{ analysis.confidence|lower }}">{{ analysis.confidence }}</span>
                 </td>
                 <td class="col-recommendation">
-                    <span class="badge badge-{{ analysis.recommendation }}">{{ analysis.recommendation|capitalize }}</span>
+                    <span class="badge badge-{{ analysis.recommendation|lower }}">{{ analysis.recommendation }}</span>
                 </td>
             </tr>
             <tr class="notes-row">
                 <td colspan="8">
                     <div class="notes-content">
                         <span class="days-on-market">{{ analysis.listing.days_on_market }} days on market</span>
+                        {% if analysis.valuation and analysis.comps_used > 0 %}
+                        <span class="comp-evidence">
+                            Comps: {{ analysis.comps_used }} sales within {{ analysis.valuation.comp_radius_miles }}mi / {{ analysis.valuation.comp_date_range_months }}mo
+                        </span>
+                        {% endif %}
                         {% for note in analysis.notes %}
                         <span class="note-item">{{ note }}</span>
                         {% endfor %}
+                        {% if analysis.valuation and analysis.potential_profit > 0 %}
                         <span class="potential-profit">Potential: £{{ "{:,}".format(analysis.potential_profit) }}</span>
+                        {% endif %}
+                        {% if analysis.valuation_statement %}
+                        <span class="valuation-statement">{{ analysis.valuation_statement }}</span>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -114,19 +219,23 @@
 </section>
 
 <section class="legend-section">
-    <h3>Score Legend</h3>
+    <h3>Recommendation Key (Based on Comparable Sales)</h3>
     <div class="legend-items">
-        <span class="badge badge-strong">Strong</span> Score 70+ with 10%+ BMV
-        <span class="badge badge-moderate">Moderate</span> Score 50+ or 15%+ BMV
-        <span class="badge badge-weak">Weak</span> Score 30+ or 5%+ BMV
-        <span class="badge badge-avoid">Avoid</span> Below thresholds
+        <span class="badge badge-strong">Strong</span> BMV ≥15% vs comparable sales
+        <span class="badge badge-moderate">Moderate</span> BMV 8-14%
+        <span class="badge badge-weak">Weak</span> BMV 3-7%
+        <span class="badge badge-avoid">Avoid</span> BMV &lt;3%
+        <span class="badge badge-overpriced">Overpriced</span> Above market value
     </div>
-</section>
-{% else %}
-<section class="no-results">
-    <h2>No Results Found</h2>
-    <p>No properties matched your criteria. Try adjusting your search parameters.</p>
-    <a href="/" class="btn btn-primary">New Search</a>
+    <h3>Confidence Levels</h3>
+    <div class="legend-items">
+        <span class="confidence-badge confidence-high">High</span> ≥5 comps, ≤12 months, ≤0.5 miles
+        <span class="confidence-badge confidence-medium">Medium</span> 3-4 comps or extended criteria
+        <span class="confidence-badge confidence-low">Low</span> Limited comparable data
+    </div>
+    <p class="data-source-note"><strong>EMV Source:</strong> UK Land Registry Price Paid Data (completed sales only)</p>
 </section>
 {% endif %}
+{% endif %}
+{# End of error_message / no_listings_message / else block #}
 {% endblock %}

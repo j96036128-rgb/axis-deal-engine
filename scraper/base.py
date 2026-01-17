@@ -3,7 +3,7 @@ Base scraper interface.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 from core.models import PropertyListing, SearchCriteria
 
@@ -25,7 +25,7 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    async def get_listing_details(self, listing_id: str) -> PropertyListing | None:
+    async def get_listing_details(self, listing_id: str) -> Optional[PropertyListing]:
         """
         Fetch detailed information for a specific listing.
 
