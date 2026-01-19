@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submissions - Admin Dashboard - Axis Allocation</title>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --charcoal: #333338;
+            --slate: #596068;
+            --gray: #808080;
+            --light-gray: #d9d9d9;
+            --pale-gray: #f2f2f2;
+            --white: #ffffff;
+            --accent: #26405c;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --error: #dc2626;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--charcoal);
+            background: var(--pale-gray);
+        }
+
+        /* Header */
+        .admin-header {
+            background: var(--accent);
+            color: var(--white);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .admin-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .admin-email {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--white);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Main Content */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .page-header h2 {
+            font-size: 24px;
+            color: var(--charcoal);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--charcoal);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* Filters */
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: 1px solid var(--light-gray);
+            border-radius: 20px;
+            background: var(--white);
+            color: var(--slate);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--white);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--pale-gray);
+        }
+
+        th {
+            background: var(--pale-gray);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .property-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .property-link:hover {
+            text-decoration: underline;
+        }
+
+        .property-id {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        .address-cell {
+            max-width: 280px;
+        }
+
+        .address-main {
+            font-weight: 500;
+            color: var(--charcoal);
+        }
+
+        .address-postcode {
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        .price-cell {
+            font-weight: 600;
+            color: var(--charcoal);
+        }
+
+        .agent-cell .agent-firm {
+            font-weight: 500;
+        }
+
+        .agent-cell .agent-name {
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        .timestamp-cell {
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-draft { background: #f3f4f6; color: #374151; }
+        .status-incomplete { background: #fef3c7; color: #92400e; }
+        .status-submitted { background: #dbeafe; color: #1e40af; }
+        .status-under_review { background: #e0e7ff; color: #3730a3; }
+        .status-unevaluated { background: #f3e8ff; color: #6b21a8; }
+        .status-evaluated { background: #dcfce7; color: #166534; }
+        .status-evaluated_and_published { background: #d1fae5; color: #065f46; }
+        .status-approved { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-archived { background: #e5e7eb; color: #374151; }
+        .status-withdrawn { background: #fef2f2; color: #991b1b; }
+
+        /* Complete indicator */
+        .complete-yes {
+            color: var(--success);
+            font-size: 14px;
+        }
+
+        .complete-no {
+            color: var(--warning);
+            font-size: 13px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--gray);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            color: var(--charcoal);
+            margin-bottom: 8px;
+        }
+
+        /* Action buttons */
+        .view-btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            background: var(--accent);
+            color: var(--white);
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .view-btn:hover {
+            background: #1d3349;
+        }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <h1>Axis Allocation Admin</h1>
+        <div class="admin-header-right">
+            <span class="admin-email">{{ admin.email }}</span>
+            <form method="POST" action="/admin/logout" style="display: inline;">
+                <button type="submit" class="logout-btn">Sign Out</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="page-header">
+            <h2>Property Submissions</h2>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ summary.total_submissions }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            {% for status, count in summary.status_counts.items() %}
+            <div class="stat-card">
+                <div class="stat-value">{{ count }}</div>
+                <div class="stat-label">{{ status.replace('_', ' ').title() }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <a href="/admin/submissions" class="filter-btn {% if not status_filter %}active{% endif %}">All</a>
+            {% for status in statuses %}
+            <a href="/admin/submissions?status_filter={{ status }}"
+               class="filter-btn {% if status_filter == status %}active{% endif %}">
+                {{ status.replace('_', ' ').title() }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            {% if submissions %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Address</th>
+                            <th>Guide Price</th>
+                            <th>Agent</th>
+                            <th>Status</th>
+                            <th>Complete</th>
+                            <th>Submitted</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in submissions %}
+                        <tr>
+                            <td>
+                                <a href="/admin/submissions/{{ sub.property_id }}" class="property-link">
+                                    {{ sub.property_id }}
+                                </a>
+                            </td>
+                            <td class="address-cell">
+                                <div class="address-main">{{ sub.address }}</div>
+                                <div class="address-postcode">{{ sub.postcode }}</div>
+                            </td>
+                            <td class="price-cell">
+                                &pound;{{ "{:,}".format(sub.guide_price) }}
+                            </td>
+                            <td class="agent-cell">
+                                <div class="agent-firm">{{ sub.agent_firm }}</div>
+                                <div class="agent-name">{{ sub.agent_name }}</div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ sub.status }}">
+                                    {{ sub.status.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if sub.is_complete %}
+                                <span class="complete-yes">&#10003; Yes</span>
+                                {% else %}
+                                <span class="complete-no">{{ sub.missing_documents|length }} missing</span>
+                                {% endif %}
+                            </td>
+                            <td class="timestamp-cell">
+                                {{ sub.created_at[:10] }}
+                            </td>
+                            <td>
+                                <a href="/admin/submissions/{{ sub.property_id }}" class="view-btn">
+                                    Review
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>No submissions found</h3>
+                <p>{% if status_filter %}No submissions with status "{{ status_filter.replace('_', ' ').title() }}"{% else %}No property submissions yet{% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

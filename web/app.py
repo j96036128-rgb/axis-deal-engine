@@ -441,6 +441,7 @@ def create_app() -> FastAPI:
     # Scraper imports are lazy - only loaded when search is invoked
     # ==========================================================================
     from web.submission_routes import router as submission_router
+    from web.admin_routes import router as admin_router
     from core import SearchCriteria, BMVScorer, DealAnalyzer
 
     # Add reporting module to path
@@ -448,8 +449,11 @@ def create_app() -> FastAPI:
     if str(REPORTING_DIR.parent) not in sys.path:
         sys.path.insert(0, str(REPORTING_DIR.parent))
 
-    # Include submission routes
+    # Include submission routes (agent-facing)
     app.include_router(submission_router)
+
+    # Include admin routes (protected by authentication)
+    app.include_router(admin_router)
 
     # Templates
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
