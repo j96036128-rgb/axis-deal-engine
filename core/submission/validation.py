@@ -90,109 +90,110 @@ def validate_submission_data(data: dict[str, Any]) -> SubmissionValidationResult
     missing_documents: list[str] = []
 
     # === Check required fields ===
+    # Error messages are written in plain English for agent-facing display
 
     # full_address
     full_address = data.get("full_address", "")
     if not full_address or not str(full_address).strip():
         missing_fields.append("full_address")
-        errors.append("full_address is required and cannot be empty")
+        errors.append("Please provide the full property address")
 
     # postcode
     postcode = data.get("postcode", "")
     if not postcode or not str(postcode).strip():
         missing_fields.append("postcode")
-        errors.append("postcode is required and cannot be empty")
+        errors.append("Please provide the property postcode")
     elif not validate_uk_postcode(str(postcode)):
-        errors.append(f"Invalid UK postcode format: {postcode}")
+        errors.append("Please enter a valid UK postcode (e.g., SW1A 1AA)")
 
     # property_type
     property_type = data.get("property_type")
     if property_type is None:
         missing_fields.append("property_type")
-        errors.append("property_type is required")
+        errors.append("Please select a property type")
     elif isinstance(property_type, str):
         try:
             PropertyType(property_type.replace("_", "-"))
         except ValueError:
-            errors.append(f"Invalid property_type: {property_type}")
+            errors.append("Please select a valid property type from the list")
     elif not isinstance(property_type, PropertyType):
-        errors.append(f"Invalid property_type: {property_type}")
+        errors.append("Please select a valid property type from the list")
 
     # tenure
     tenure = data.get("tenure")
     is_leasehold = False
     if tenure is None:
         missing_fields.append("tenure")
-        errors.append("tenure is required")
+        errors.append("Please select freehold or leasehold")
     elif isinstance(tenure, str):
         try:
             tenure_enum = Tenure(tenure)
             is_leasehold = tenure_enum == Tenure.LEASEHOLD
         except ValueError:
-            errors.append(f"Invalid tenure: {tenure}")
+            errors.append("Please select freehold or leasehold")
     elif isinstance(tenure, Tenure):
         is_leasehold = tenure == Tenure.LEASEHOLD
     else:
-        errors.append(f"Invalid tenure: {tenure}")
+        errors.append("Please select freehold or leasehold")
 
     # floor_area_sqm
     floor_area = data.get("floor_area_sqm")
     if floor_area is None:
         missing_fields.append("floor_area_sqm")
-        errors.append("floor_area_sqm is required")
+        errors.append("Please provide the floor area in square metres")
     else:
         try:
             area = int(floor_area)
             if area <= 0:
-                errors.append("floor_area_sqm must be positive")
+                errors.append("Floor area must be greater than zero")
         except (ValueError, TypeError):
-            errors.append(f"floor_area_sqm must be a valid integer: {floor_area}")
+            errors.append("Please enter a valid number for floor area")
 
     # guide_price
     guide_price = data.get("guide_price")
     if guide_price is None:
         missing_fields.append("guide_price")
-        errors.append("guide_price is required")
+        errors.append("Please provide the guide price")
     else:
         try:
             price = int(guide_price)
             if price <= 0:
-                errors.append("guide_price must be positive")
+                errors.append("Guide price must be greater than zero")
         except (ValueError, TypeError):
-            errors.append(f"guide_price must be a valid integer: {guide_price}")
+            errors.append("Please enter a valid number for guide price")
 
     # sale_route
     sale_route = data.get("sale_route")
     if sale_route is None:
         missing_fields.append("sale_route")
-        errors.append("sale_route is required")
+        errors.append("Please select a sale route")
     elif isinstance(sale_route, str):
         try:
             SaleRoute(sale_route)
         except ValueError:
-            errors.append(f"Invalid sale_route: {sale_route}")
+            errors.append("Please select a valid sale route from the list")
     elif not isinstance(sale_route, SaleRoute):
-        errors.append(f"Invalid sale_route: {sale_route}")
+        errors.append("Please select a valid sale route from the list")
 
     # agent_firm
     agent_firm = data.get("agent_firm", "")
     if not agent_firm or not str(agent_firm).strip():
         missing_fields.append("agent_firm")
-        errors.append("agent_firm is required and cannot be empty")
+        errors.append("Agent firm is required")
 
     # agent_name
     agent_name = data.get("agent_name", "")
     if not agent_name or not str(agent_name).strip():
         missing_fields.append("agent_name")
-        errors.append("agent_name is required and cannot be empty")
+        errors.append("Please provide your name")
 
     # agent_email
     agent_email = data.get("agent_email", "")
     if not agent_email or not str(agent_email).strip():
         missing_fields.append("agent_email")
-        errors.append("agent_email is required and cannot be empty")
+        errors.append("Agent email is required")
     elif "@" not in agent_email:
-        errors.append(f"Invalid agent_email format: {agent_email}")
+        errors.append("Please enter a valid email address")
 
     # === Check documents ===
     documents = data.get("documents", [])

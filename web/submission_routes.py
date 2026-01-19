@@ -80,7 +80,7 @@ def require_valid_invite(
     if isinstance(result, InviteValidationFailure):
         raise HTTPException(
             status_code=403,
-            detail=f"Access denied: {result.reason}",
+            detail=result.reason,
         )
 
     return result

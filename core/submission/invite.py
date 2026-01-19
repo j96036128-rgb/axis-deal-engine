@@ -486,9 +486,10 @@ def validate_invite_token(
     Returns:
         InviteValidationSuccess if valid, InviteValidationFailure otherwise
     """
+    # Error messages are plain English, professional, and non-accusatory
     if not token_value:
         return InviteValidationFailure(
-            reason="Invite token is required",
+            reason="An invite link is required to access this page. Please use the link provided in your invitation email.",
             error_code="MISSING",
         )
 
@@ -496,25 +497,25 @@ def validate_invite_token(
 
     if not token:
         return InviteValidationFailure(
-            reason="Invalid invite token",
+            reason="This invite link is not recognised. Please check you are using the correct link from your invitation email.",
             error_code="NOT_FOUND",
         )
 
     if token.status == InviteStatus.REVOKED:
         return InviteValidationFailure(
-            reason="This invite has been revoked",
+            reason="This invite is no longer active. Please contact info@axisallocation.com if you need a new invitation.",
             error_code="REVOKED",
         )
 
     if token.is_expired:
         return InviteValidationFailure(
-            reason="This invite has expired",
+            reason="This invite has expired. Please contact info@axisallocation.com to request a new invitation.",
             error_code="EXPIRED",
         )
 
     if token.is_max_uses_reached:
         return InviteValidationFailure(
-            reason="This invite has reached its maximum uses",
+            reason="This invite has already been used. Please contact info@axisallocation.com if you need to make another submission.",
             error_code="MAX_USES",
         )
 
