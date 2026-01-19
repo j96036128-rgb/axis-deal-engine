@@ -451,9 +451,11 @@ def create_app() -> FastAPI:
 
     # Include submission routes (agent-facing)
     app.include_router(submission_router)
+    print("Submission routes registered")
 
     # Include admin routes (protected by authentication)
     app.include_router(admin_router)
+    print("Admin routes registered at /admin/*")
 
     # Templates
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
