@@ -399,13 +399,19 @@ def create_app() -> FastAPI:
     )
 
     # ==========================================================================
-    # CRITICAL: Health endpoint must be registered FIRST, before any middleware
-    # or static mounts that could fail. Railway healthcheck depends on this.
+    # CRITICAL: Healthcheck endpoints must be registered FIRST, before any
+    # middleware or static mounts that could fail. Railway healthcheck probes "/".
+    # These endpoints are synchronous, perform NO IO, and return immediately.
     # ==========================================================================
+    @app.get("/", include_in_schema=False)
+    def root():
+        """Root healthcheck for Railway. No dependencies, no IO."""
+        return {"status": "ok"}
+
     @app.get("/health", include_in_schema=False)
     def health():
-        """Minimal health check for Railway. No dependencies."""
-        return {"status": "ok"}
+        """Secondary health endpoint. No dependencies, no IO."""
+        return {"status": "healthy"}
 
     # CORS middleware - locked down for production
     if ALLOWED_ORIGINS:
@@ -417,12 +423,23 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    # ==========================================================================
+    # Startup event: Deferred initialization (filesystem, heavy imports)
+    # This runs AFTER healthcheck is available, so Railway won't timeout.
+    # ==========================================================================
+    @app.on_event("startup")
+    def on_startup():
+        """Deferred startup tasks. Runs after healthcheck is ready."""
+        # Create reports directory (safe with exist_ok=True)
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        print("Axis Deal Engine started successfully")
+
     # Mount static files
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    # Mount reports directory for PDF serving
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    app.mount("/reports", StaticFiles(directory=REPORTS_DIR), name="reports")
+    # Mount reports directory for PDF serving (directory created in startup event)
+    # Note: StaticFiles handles missing directory gracefully
+    app.mount("/reports", StaticFiles(directory=REPORTS_DIR, check_dir=False), name="reports")
 
     # Include submission routes
     app.include_router(submission_router)
@@ -439,7 +456,7 @@ def create_app() -> FastAPI:
     deal_analyzer = DealAnalyzer()
     scorer = BMVScorer()  # Keep for backward compatibility
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/app", response_class=HTMLResponse)
     async def index(request: Request):
         """Render the main search form."""
         return templates.TemplateResponse(
