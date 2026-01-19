@@ -58,6 +58,7 @@ class SubmissionStatus(Enum):
     UNDER_REVIEW = "under_review"
     UNEVALUATED = "unevaluated"  # Not yet evaluated by Deal Engine
     EVALUATED = "evaluated"  # Evaluated by Deal Engine
+    EVALUATED_AND_PUBLISHED = "evaluated_and_published"  # Buyer PDF generated
 
     # Final states
     APPROVED = "approved"

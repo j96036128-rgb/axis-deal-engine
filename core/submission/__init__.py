@@ -58,6 +58,75 @@ from core.submission.verification import (
     DOCUMENT_VERIFIABLE,
     CLAIM_ONLY,
 )
+from core.submission.export import (
+    # Contract
+    VerifiedPropertyExport,
+    # Enums
+    TrustLevel,
+    PlanningRestriction,
+    # Nested dataclasses
+    ExportMetadata,
+    ExportVerificationSummary,
+    AddressFacts,
+    PhysicalFacts,
+    TenureFacts,
+    FinancialFacts,
+    PlanningFacts,
+    PropertyFacts,
+    ExportDocumentRecord,
+    ExportEpcRecord,
+    ExportDocuments,
+    ExportFlags,
+    # Factory and validation
+    create_verified_property_export,
+    validate_export_version,
+    parse_verified_property_export,
+    compute_export_hash,
+    # Exceptions
+    ExportVersionError,
+    ExportBlockedError,
+    # Constants
+    EXPORT_VERSION,
+    SUPPORTED_EXPORT_VERSIONS,
+)
+from core.submission.auto_publish import (
+    # Service
+    AutoPublishService,
+    # Result types
+    AutoPublishResult,
+    AutoPublishSuccess,
+    AutoPublishBlocked,
+    AutoPublishGatingFailed,
+    AutoPublishExportFailed,
+    AutoPublishValidationError,
+    # Repository integration
+    PublishRecord,
+    # Convenience function
+    try_auto_publish,
+    # Constants
+    BUYER_PDF_BASE_DIR,
+    BLOCKED_TRUST_LEVELS,
+)
+from core.submission.invite import (
+    # Model and enums
+    InviteToken,
+    InviteStatus,
+    # Repository
+    InviteTokenRepository,
+    get_invite_repository,
+    reset_invite_repository,
+    # Validation
+    InviteValidationResult,
+    InviteValidationSuccess,
+    InviteValidationFailure,
+    validate_invite_token,
+    # Factory
+    create_invite_token,
+    generate_token_value,
+    # Constants
+    TOKEN_BYTES,
+    DEFAULT_EXPIRY_DAYS,
+)
 
 __all__ = [
     # Schema
@@ -100,4 +169,54 @@ __all__ = [
     "EPC_VERIFIABLE",
     "DOCUMENT_VERIFIABLE",
     "CLAIM_ONLY",
+    # Export Contract (VerifiedPropertyExport v1.0)
+    "VerifiedPropertyExport",
+    "TrustLevel",
+    "PlanningRestriction",
+    "ExportMetadata",
+    "ExportVerificationSummary",
+    "AddressFacts",
+    "PhysicalFacts",
+    "TenureFacts",
+    "FinancialFacts",
+    "PlanningFacts",
+    "PropertyFacts",
+    "ExportDocumentRecord",
+    "ExportEpcRecord",
+    "ExportDocuments",
+    "ExportFlags",
+    "create_verified_property_export",
+    "validate_export_version",
+    "parse_verified_property_export",
+    "compute_export_hash",
+    "ExportVersionError",
+    "ExportBlockedError",
+    "EXPORT_VERSION",
+    "SUPPORTED_EXPORT_VERSIONS",
+    # Auto Publish (Buyer PDF Generation)
+    "AutoPublishService",
+    "AutoPublishResult",
+    "AutoPublishSuccess",
+    "AutoPublishBlocked",
+    "AutoPublishGatingFailed",
+    "AutoPublishExportFailed",
+    "AutoPublishValidationError",
+    "PublishRecord",
+    "try_auto_publish",
+    "BUYER_PDF_BASE_DIR",
+    "BLOCKED_TRUST_LEVELS",
+    # Invite Token System
+    "InviteToken",
+    "InviteStatus",
+    "InviteTokenRepository",
+    "get_invite_repository",
+    "reset_invite_repository",
+    "InviteValidationResult",
+    "InviteValidationSuccess",
+    "InviteValidationFailure",
+    "validate_invite_token",
+    "create_invite_token",
+    "generate_token_value",
+    "TOKEN_BYTES",
+    "DEFAULT_EXPIRY_DAYS",
 ]

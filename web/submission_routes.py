@@ -3,6 +3,11 @@ Agent Submission Routes - Web API for Property Submissions
 
 Private, invite-only submission portal for agents.
 No public marketplace, no buyer browsing.
+
+Access Control:
+- All submission routes require a valid invite token
+- Invite tokens are issued by Axis to approved agents
+- Agent firm and email are locked to token (cannot be edited)
 """
 
 from __future__ import annotations
@@ -10,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException
+from fastapi import APIRouter, Request, Form, File, UploadFile, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -28,6 +33,13 @@ from core.submission import (
     create_submission,
     VersionAction,
     create_verification_summary_from_submission,
+    # Invite token system
+    InviteToken,
+    InviteStatus,
+    InviteValidationSuccess,
+    InviteValidationFailure,
+    validate_invite_token,
+    get_invite_repository,
 )
 from core.submission.validation import validate_submission_data
 
@@ -41,13 +53,57 @@ templates = Jinja2Templates(directory="web/templates")
 
 
 # =============================================================================
+# Invite Token Validation Helper
+# =============================================================================
+
+
+def require_valid_invite(
+    invite: Optional[str],
+    request: Request,
+) -> InviteValidationSuccess:
+    """
+    Validate invite token from query params.
+
+    Args:
+        invite: Token value from query params
+        request: FastAPI request object
+
+    Returns:
+        InviteValidationSuccess with token and agent data
+
+    Raises:
+        HTTPException(403) if token is invalid
+    """
+    repo = get_invite_repository()
+    result = validate_invite_token(invite, repo)
+
+    if isinstance(result, InviteValidationFailure):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied: {result.reason}",
+        )
+
+    return result
+
+
+# =============================================================================
 # Submission Form
 # =============================================================================
 
 
 @router.get("/", response_class=HTMLResponse)
-async def submission_form(request: Request):
-    """Render the agent submission form."""
+async def submission_form(
+    request: Request,
+    invite: Optional[str] = Query(None, description="Invite token"),
+):
+    """
+    Render the agent submission form.
+
+    Requires a valid invite token. Agent firm and email are locked to the token.
+    """
+    # Validate invite token
+    validation = require_valid_invite(invite, request)
+
     return templates.TemplateResponse(
         "submission_form.html",
         {
@@ -59,6 +115,10 @@ async def submission_form(request: Request):
                 {"value": dt.value, "label": dt.value.replace("_", " ").title()}
                 for dt in DocumentType
             ],
+            # Pre-fill and lock agent fields from invite token
+            "agent_firm": validation.agent_firm,
+            "agent_email": validation.agent_email,
+            "invite_token": invite,  # Pass through for form submission
         },
     )
 
@@ -66,6 +126,8 @@ async def submission_form(request: Request):
 @router.post("/", response_class=HTMLResponse)
 async def submit_property(
     request: Request,
+    # Invite token (required)
+    invite: str = Form(...),
     # Required property fields
     full_address: str = Form(...),
     postcode: str = Form(...),
@@ -74,10 +136,8 @@ async def submit_property(
     floor_area_sqm: int = Form(...),
     guide_price: int = Form(...),
     sale_route: str = Form(...),
-    # Required agent fields
-    agent_firm: str = Form(...),
+    # Agent name (only field agent can edit - firm/email locked to token)
     agent_name: str = Form(...),
-    agent_email: str = Form(...),
     # Optional fields
     bedrooms: Optional[int] = Form(None),
     bathrooms: Optional[int] = Form(None),
@@ -98,8 +158,16 @@ async def submit_property(
     """
     Process property submission.
 
+    Requires valid invite token. Agent firm and email are locked to the token.
     Creates submission, stores documents, and creates logbook.
     """
+    # Validate invite token
+    invite_validation = require_valid_invite(invite, request)
+
+    # Use agent_firm and agent_email from token (LOCKED - cannot be overridden)
+    agent_firm = invite_validation.agent_firm
+    agent_email = invite_validation.agent_email
+
     # Build submission data
     data = {
         "full_address": full_address,
@@ -109,9 +177,9 @@ async def submit_property(
         "floor_area_sqm": floor_area_sqm,
         "guide_price": guide_price,
         "sale_route": sale_route,
-        "agent_firm": agent_firm,
+        "agent_firm": agent_firm,  # From token (locked)
         "agent_name": agent_name,
-        "agent_email": agent_email,
+        "agent_email": agent_email,  # From token (locked)
         "bedrooms": bedrooms,
         "bathrooms": bathrooms,
         "year_built": year_built,
@@ -142,6 +210,10 @@ async def submit_property(
                     for dt in DocumentType
                 ],
                 "form_data": data,
+                # Keep invite token and locked fields
+                "agent_firm": agent_firm,
+                "agent_email": agent_email,
+                "invite_token": invite,
             },
             status_code=400,
         )
@@ -180,6 +252,10 @@ async def submit_property(
     # Create logbook
     repo = get_submission_repository()
     logbook = repo.create(submission)
+
+    # Increment invite token usage
+    invite_repo = get_invite_repository()
+    invite_repo.increment_use(invite_validation.token.token_id)
 
     # Redirect to confirmation page
     return RedirectResponse(
@@ -420,3 +496,102 @@ async def update_property_status(
         url=f"/submit/admin/{property_id}",
         status_code=303,
     )
+
+
+# =============================================================================
+# Invite Token Admin Routes
+# =============================================================================
+
+
+@router.get("/admin/invites", response_class=HTMLResponse)
+async def admin_invite_list(request: Request):
+    """Admin view listing all invite tokens."""
+    repo = get_invite_repository()
+    tokens = repo.get_admin_list()
+
+    return templates.TemplateResponse(
+        "invite_admin.html",
+        {
+            "request": request,
+            "tokens": tokens,
+            "total_count": repo.count(),
+            "active_count": len(repo.list_active()),
+        },
+    )
+
+
+@router.get("/api/admin/invites")
+async def api_list_invites():
+    """API endpoint to list all invite tokens (admin only)."""
+    repo = get_invite_repository()
+    return JSONResponse({
+        "tokens": repo.get_admin_list(),
+        "total_count": repo.count(),
+        "active_count": len(repo.list_active()),
+    })
+
+
+@router.post("/api/admin/invites")
+async def api_create_invite(
+    agent_firm: str = Form(...),
+    agent_email: str = Form(...),
+    max_uses: Optional[int] = Form(None),
+    expires_days: Optional[int] = Form(None),
+    notes: Optional[str] = Form(None),
+):
+    """
+    Create a new invite token (admin only).
+
+    Returns the full token including the token_value for sharing.
+    """
+    from datetime import timedelta
+
+    repo = get_invite_repository()
+
+    expires_at = None
+    if expires_days:
+        expires_at = datetime.utcnow() + timedelta(days=expires_days)
+
+    token = repo.create_token(
+        agent_firm=agent_firm,
+        agent_email=agent_email,
+        expires_at=expires_at,
+        max_uses=max_uses,
+        notes=notes,
+    )
+
+    return JSONResponse({
+        "success": True,
+        "token": token.to_dict(),
+        "invite_url": f"/submit/?invite={token.token_value}",
+    })
+
+
+@router.post("/api/admin/invites/{token_id}/revoke")
+async def api_revoke_invite(
+    token_id: str,
+    note: Optional[str] = Form(None),
+):
+    """Revoke an invite token (admin only)."""
+    repo = get_invite_repository()
+
+    if not repo.revoke(token_id, note):
+        raise HTTPException(status_code=404, detail="Token not found")
+
+    return JSONResponse({
+        "success": True,
+        "token_id": token_id,
+        "status": "revoked",
+    })
+
+
+@router.get("/api/admin/invites/{token_id}")
+async def api_get_invite(token_id: str):
+    """Get invite token details (admin only)."""
+    repo = get_invite_repository()
+    token = repo.get_by_id(token_id)
+
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found")
+
+    return JSONResponse(token.to_dict())

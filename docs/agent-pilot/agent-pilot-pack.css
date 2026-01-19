@@ -1,0 +1,421 @@
+/* =============================================================================
+   Axis Allocation — Agent Pilot Onboarding Pack
+   Institutional Design System
+   ============================================================================= */
+
+/* === Base Reset & Typography === */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --color-black: #1a1a1a;
+    --color-charcoal: #2d2d2d;
+    --color-grey-dark: #4a4a4a;
+    --color-grey-medium: #6b6b6b;
+    --color-grey-light: #e8e8e8;
+    --color-white: #ffffff;
+
+    --font-serif: "Georgia", "Times New Roman", serif;
+    --font-sans: "Helvetica Neue", "Arial", sans-serif;
+
+    --page-width: 210mm;
+    --page-height: 297mm;
+    --margin-outer: 25mm;
+    --margin-inner: 20mm;
+}
+
+html {
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body {
+    font-family: var(--font-serif);
+    color: var(--color-black);
+    background: var(--color-grey-light);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* === Document Container === */
+
+.document {
+    max-width: var(--page-width);
+    margin: 0 auto;
+}
+
+/* === Page Structure === */
+
+.page {
+    width: var(--page-width);
+    min-height: var(--page-height);
+    background: var(--color-white);
+    padding: var(--margin-outer);
+    padding-left: var(--margin-inner);
+    padding-right: var(--margin-inner);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    page-break-after: always;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media print {
+    body {
+        background: white;
+    }
+
+    .page {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+        page-break-inside: avoid;
+    }
+}
+
+/* === Page Header === */
+
+.page-header {
+    padding-bottom: 15mm;
+    border-bottom: 0.5pt solid var(--color-grey-light);
+    margin-bottom: 10mm;
+}
+
+.page-header .brand {
+    font-family: var(--font-sans);
+    font-size: 10pt;
+    font-weight: 300;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--color-charcoal);
+}
+
+/* === Page Footer === */
+
+.page-footer {
+    margin-top: auto;
+    padding-top: 6mm;
+    border-top: 0.5pt solid var(--color-grey-light);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-sans);
+    font-size: 7.25pt;
+    line-height: 1.3;
+    color: var(--color-grey-medium);
+}
+
+.footer-brand {
+    font-weight: 400;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+}
+
+.footer-confidential {
+    font-style: italic;
+}
+
+/* === Page Content === */
+
+.page-content {
+    flex: 1;
+}
+
+/* === Typography === */
+
+h1 {
+    font-family: var(--font-serif);
+    font-size: 24pt;
+    font-weight: 400;
+    color: var(--color-black);
+    margin-bottom: 8mm;
+    letter-spacing: -0.5pt;
+}
+
+h2 {
+    font-family: var(--font-sans);
+    font-size: 10pt;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.5pt;
+    color: var(--color-charcoal);
+    margin-bottom: 5mm;
+}
+
+h3 {
+    font-family: var(--font-serif);
+    font-size: 13pt;
+    font-weight: 400;
+    color: var(--color-black);
+    margin-bottom: 3mm;
+}
+
+p {
+    font-size: 10.5pt;
+    line-height: 1.7;
+    color: var(--color-charcoal);
+    margin-bottom: 4mm;
+}
+
+ul {
+    list-style: none;
+    margin-bottom: 5mm;
+}
+
+ul li {
+    font-size: 10.5pt;
+    line-height: 1.7;
+    color: var(--color-charcoal);
+    padding-left: 4mm;
+    position: relative;
+    margin-bottom: 2mm;
+}
+
+ul li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.7em;
+    width: 4pt;
+    height: 0.5pt;
+    background: var(--color-grey-medium);
+}
+
+/* === Page 1: Cover === */
+
+.page-1 .title-block {
+    margin-top: 25mm;
+    margin-bottom: 20mm;
+}
+
+.page-1 .title-block h1 {
+    font-size: 32pt;
+    margin-bottom: 6mm;
+}
+
+.page-1 .subtitle {
+    font-family: var(--font-serif);
+    font-size: 12pt;
+    font-style: italic;
+    color: var(--color-grey-dark);
+    margin-bottom: 0;
+}
+
+.page-1 .opening-statement {
+    max-width: 140mm;
+    margin-bottom: 20mm;
+    padding: 8mm 0;
+    border-top: 0.5pt solid var(--color-grey-light);
+    border-bottom: 0.5pt solid var(--color-grey-light);
+}
+
+.page-1 .opening-statement p {
+    font-size: 11pt;
+    line-height: 1.8;
+}
+
+/* === Two Column Layout === */
+
+.two-column {
+    display: flex;
+    gap: 15mm;
+}
+
+.two-column .column {
+    flex: 1;
+}
+
+/* === Page 2: Steps === */
+
+.section-title {
+    font-size: 20pt;
+    margin-bottom: 12mm;
+    padding-bottom: 5mm;
+    border-bottom: 0.5pt solid var(--color-grey-light);
+}
+
+.step {
+    margin-bottom: 10mm;
+    padding-bottom: 8mm;
+    border-bottom: 0.5pt solid var(--color-grey-light);
+}
+
+.step:last-of-type {
+    border-bottom: none;
+}
+
+.step-header {
+    display: flex;
+    align-items: baseline;
+    gap: 4mm;
+    margin-bottom: 4mm;
+}
+
+.step-number {
+    font-family: var(--font-sans);
+    font-size: 9pt;
+    font-weight: 500;
+    color: var(--color-grey-medium);
+    width: 6mm;
+}
+
+.step-content {
+    padding-left: 10mm;
+}
+
+.step-content p {
+    margin-bottom: 3mm;
+}
+
+.step-content .step-intro {
+    font-weight: 500;
+    margin-bottom: 2mm;
+}
+
+.step-content .inline-list {
+    margin-bottom: 4mm;
+}
+
+.step-content .inline-list li {
+    display: inline;
+    padding-left: 0;
+    margin-right: 3mm;
+}
+
+.step-content .inline-list li::before {
+    display: none;
+}
+
+.step-content .inline-list li:not(:last-child)::after {
+    content: " · ";
+    color: var(--color-grey-medium);
+}
+
+.step-content .rules {
+    font-size: 9.5pt;
+    color: var(--color-grey-dark);
+    padding: 3mm 0;
+    margin-top: 2mm;
+}
+
+.step-content .rules p {
+    margin-bottom: 0;
+    font-size: 9.5pt;
+}
+
+.step-content .emphasis {
+    font-style: italic;
+    color: var(--color-grey-dark);
+}
+
+/* === Page 3: Benefits === */
+
+.page-3 .page-content {
+    line-height: 1.65;
+}
+
+.page-3 .two-column.benefits {
+    margin-bottom: 10mm;
+    padding-bottom: 7mm;
+    border-bottom: 0.5pt solid var(--color-grey-light);
+}
+
+.pilot-conditions {
+    margin-bottom: 10mm;
+    padding-bottom: 7mm;
+    border-bottom: 0.5pt solid var(--color-grey-light);
+}
+
+.next-step {
+    margin-bottom: 12mm;
+}
+
+.next-step p {
+    font-size: 11pt;
+    max-width: 130mm;
+}
+
+/* === Authorship Block === */
+
+.authorship {
+    margin-top: auto;
+    padding-top: 10mm;
+    text-align: right;
+}
+
+.authorship p {
+    font-size: 9pt;
+    color: var(--color-grey-medium);
+    margin-bottom: 1mm;
+    font-family: var(--font-sans);
+}
+
+.authorship .author-name {
+    font-family: var(--font-serif);
+    font-size: 11pt;
+    color: var(--color-black);
+    font-weight: 400;
+    margin-bottom: 0.5mm;
+}
+
+.authorship .author-title {
+    font-size: 9pt;
+    color: var(--color-grey-dark);
+    font-style: italic;
+}
+
+/* === Print Optimizations === */
+
+@media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    .page {
+        width: 100%;
+        height: 100vh;
+        padding: 25mm 20mm;
+    }
+
+    .page-1 {
+        page-break-before: avoid;
+    }
+}
+
+/* === Screen Responsiveness === */
+
+@media screen and (max-width: 800px) {
+    :root {
+        --page-width: 100%;
+        --margin-outer: 8mm;
+        --margin-inner: 8mm;
+    }
+
+    .page {
+        min-height: auto;
+        margin-bottom: 10px;
+    }
+
+    .two-column {
+        flex-direction: column;
+        gap: 8mm;
+    }
+
+    h1 {
+        font-size: 20pt;
+    }
+
+    .page-1 .title-block h1 {
+        font-size: 24pt;
+    }
+
+    .section-title {
+        font-size: 18pt;
+    }
+}

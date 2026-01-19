@@ -609,6 +609,8 @@ class SubmissionLogbook:
         """
         Export logbook data for Deal Engine consumption (read-only).
 
+        DEPRECATED: Use export_verified_contract() instead for typed exports.
+
         Returns complete submission data suitable for analysis,
         including hash chain integrity status.
 
@@ -673,6 +675,41 @@ class SubmissionLogbook:
             "block_reason": block_reason,
             "ready_for_evaluation": not blocked and (current.get("is_complete", False) if current else False),
         }
+
+    def export_verified_contract(
+        self,
+        verification_summary: "PropertyVerificationSummary",
+    ) -> "VerifiedPropertyExport":
+        """
+        Export logbook data as a typed VerifiedPropertyExport v1.0 contract.
+
+        This is the ONLY format the Deal Engine should consume.
+
+        Args:
+            verification_summary: PropertyVerificationSummary for the submission
+
+        Returns:
+            VerifiedPropertyExport - immutable, versioned contract
+
+        Raises:
+            ExportBlockedError: If gating rules fail (invalid chain, disputes,
+                               unverified guide price, missing documents)
+        """
+        from core.submission.export import (
+            ExportBlockedError,
+            VerifiedPropertyExport,
+            create_verified_property_export,
+        )
+
+        export, blocking_reasons = create_verified_property_export(
+            logbook=self,
+            verification_summary=verification_summary,
+        )
+
+        if export is None:
+            raise ExportBlockedError(blocking_reasons)
+
+        return export
 
     def to_dict(self) -> dict[str, Any]:
         """Convert logbook to dictionary for serialisation."""
