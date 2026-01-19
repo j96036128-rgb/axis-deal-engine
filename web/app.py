@@ -3,12 +3,15 @@ FastAPI application for the deal engine web interface.
 Phase 7: Planning Context Input + UI Surfacing
 
 Production deployment configuration via environment variables.
+
+CRITICAL: This module must import cleanly without side effects.
+Heavy imports are deferred to startup event for Railway healthcheck compatibility.
 """
 
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import re
 import sys
 
@@ -19,33 +22,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from core import SearchCriteria, BMVScorer, DealAnalyzer, Confidence, Recommendation
-
 # =============================================================================
-# Environment Configuration
+# Environment Configuration (lightweight, no IO)
 # =============================================================================
 
 # Production mode detection
 IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("PRODUCTION", "").lower() == "true"
 
 # CORS configuration - locked down for production
-# In production, only allow the Railway-assigned domain
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
 if not ALLOWED_ORIGINS and not IS_PRODUCTION:
-    # Development fallback only
     ALLOWED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
 # Debug mode - NEVER enabled in production
 DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true" and not IS_PRODUCTION
-
-# Import submission routes
-from web.submission_routes import router as submission_router
-from scraper import AuctionHouseLondonScraper
-
-# Add reporting module to path
-REPORTING_DIR = Path(__file__).parent.parent / "reporting"
-if str(REPORTING_DIR.parent) not in sys.path:
-    sys.path.insert(0, str(REPORTING_DIR.parent))
 
 
 @dataclass
@@ -387,6 +377,8 @@ class GenerateReportRequest(BaseModel):
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+    print("Creating FastAPI app...")
+
     app = FastAPI(
         title="Axis Deal Engine",
         description="Internal deal sourcing engine for property opportunities",
@@ -413,6 +405,8 @@ def create_app() -> FastAPI:
         """Secondary health endpoint. No dependencies, no IO."""
         return {"status": "healthy"}
 
+    print("Healthcheck endpoints registered")
+
     # CORS middleware - locked down for production
     if ALLOWED_ORIGINS:
         app.add_middleware(
@@ -430,6 +424,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def on_startup():
         """Deferred startup tasks. Runs after healthcheck is ready."""
+        print("Startup event fired - initializing resources...")
         # Create reports directory (safe with exist_ok=True)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         print("Axis Deal Engine started successfully")
@@ -440,6 +435,18 @@ def create_app() -> FastAPI:
     # Mount reports directory for PDF serving (directory created in startup event)
     # Note: StaticFiles handles missing directory gracefully
     app.mount("/reports", StaticFiles(directory=REPORTS_DIR, check_dir=False), name="reports")
+
+    # ==========================================================================
+    # Heavy imports deferred inside create_app to avoid import-time side effects
+    # ==========================================================================
+    from web.submission_routes import router as submission_router
+    from scraper import AuctionHouseLondonScraper
+    from core import SearchCriteria, BMVScorer, DealAnalyzer
+
+    # Add reporting module to path
+    REPORTING_DIR = Path(__file__).parent.parent / "reporting"
+    if str(REPORTING_DIR.parent) not in sys.path:
+        sys.path.insert(0, str(REPORTING_DIR.parent))
 
     # Include submission routes
     app.include_router(submission_router)
