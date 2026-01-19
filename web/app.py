@@ -457,6 +457,14 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     print("Admin routes registered at /admin/*")
 
+    # Debug: Print admin auth configuration status at startup
+    from web.admin_auth import is_admin_configured, get_admin_emails, get_admin_password_hash
+    admin_emails = get_admin_emails()
+    has_password = bool(get_admin_password_hash())
+    print(f"Admin auth configured: {is_admin_configured()}")
+    print(f"  ADMIN_EMAILS set: {bool(admin_emails)} (count: {len(admin_emails)})")
+    print(f"  ADMIN_PASSWORD_HASH set: {has_password}")
+
     # Templates
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
