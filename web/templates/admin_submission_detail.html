@@ -876,10 +876,135 @@
                                 <p><strong>Complete:</strong> {% if completeness.is_complete %}Yes{% else %}No{% endif %}</p>
                             </div>
                         </div>
+
+                        <!-- Completeness Score (Admin Only) -->
+                        <div class="action-section">
+                            <h4>Completeness Score</h4>
+                            <div class="completeness-score-display">
+                                <div class="score-main {% if completeness_score.total_score >= 80 %}score-good{% elif completeness_score.total_score >= 60 %}score-partial{% else %}score-blocked{% endif %}">
+                                    {{ completeness_score.total_score }}%
+                                </div>
+                                <div class="score-breakdown">
+                                    <div class="score-item {% if completeness_score.core_fields_score == 40 %}check{% else %}missing{% endif %}">
+                                        <span class="score-icon">{% if completeness_score.core_fields_score == 40 %}&#10003;{% else %}&#10007;{% endif %}</span>
+                                        Required fields: {{ completeness_score.core_fields_complete }} / {{ completeness_score.core_fields_total }}
+                                    </div>
+                                    <div class="score-item {% if completeness_score.documents_score == 40 %}check{% else %}missing{% endif %}">
+                                        <span class="score-icon">{% if completeness_score.documents_score == 40 %}&#10003;{% else %}&#10007;{% endif %}</span>
+                                        Documents: {{ completeness_score.documents_uploaded }} / {{ completeness_score.documents_required }}
+                                    </div>
+                                    <div class="score-item {% if completeness_score.contextual_score == 20 %}check{% else %}partial{% endif %}">
+                                        <span class="score-icon">{% if completeness_score.contextual_score == 20 %}&#10003;{% elif completeness_score.contextual_score > 0 %}~{% else %}&#10007;{% endif %}</span>
+                                        Contextual: {{ completeness_score.contextual_fields_complete }} / {{ completeness_score.contextual_fields_total }}
+                                    </div>
+                                </div>
+
+                                {% if completeness_score.is_blocked %}
+                                <div class="blocking-reasons">
+                                    <strong>Blocking Issues:</strong>
+                                    <ul>
+                                        {% for reason in completeness_score.blocking_reasons %}
+                                        <li>{{ reason }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% elif completeness_score.missing_contextual_fields %}
+                                <div class="optional-missing">
+                                    <strong>Optional fields missing:</strong>
+                                    <ul>
+                                        {% for field in completeness_score.missing_contextual_fields %}
+                                        <li>{{ field.replace('_', ' ').title() }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Quick Friction Log -->
+                        <div class="action-section">
+                            <h4>Log Friction</h4>
+                            <p style="font-size: 12px; color: var(--gray); margin-bottom: 10px;">
+                                Note any agent struggles with this submission.
+                            </p>
+                            <a href="/admin/friction?property_id={{ submission.property_id }}&agent_email={{ submission.agent_email }}" class="action-btn secondary" style="text-align: center; text-decoration: none;">
+                                Log Friction Point
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <style>
+        /* Completeness Score Styles */
+        .completeness-score-display {
+            background: var(--pale-gray);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .score-main {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .score-main.score-good { color: var(--success); }
+        .score-main.score-partial { color: var(--warning); }
+        .score-main.score-blocked { color: var(--error); }
+
+        .score-breakdown {
+            font-size: 13px;
+            color: var(--slate);
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+        }
+
+        .score-icon {
+            width: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .score-item.check .score-icon { color: var(--success); }
+        .score-item.missing .score-icon { color: var(--error); }
+        .score-item.partial .score-icon { color: var(--warning); }
+
+        .blocking-reasons {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--error-bg);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--error);
+        }
+
+        .blocking-reasons ul {
+            margin: 4px 0 0 16px;
+            padding: 0;
+        }
+
+        .optional-missing {
+            margin-top: 12px;
+            padding: 10px;
+            background: #fef3c7;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #92400e;
+        }
+
+        .optional-missing ul {
+            margin: 4px 0 0 16px;
+            padding: 0;
+        }
+    </style>
 </body>
 </html>

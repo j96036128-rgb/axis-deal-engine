@@ -279,6 +279,7 @@ class SubmissionRepository:
             current = logbook.current_submission
             if current:
                 completeness = logbook.get_completeness_check()
+                completeness_score = current.get_completeness_score()
                 result.append({
                     "property_id": logbook.property_id,
                     "address": current.full_address,
@@ -297,6 +298,9 @@ class SubmissionRepository:
                     "is_complete": completeness.get("is_complete", False),
                     "missing_documents": completeness.get("missing_documents", []),
                     "document_count": completeness.get("document_count", 0),
+                    # Completeness score for admin
+                    "completeness_score": completeness_score.total_score,
+                    "completeness_blocked": completeness_score.is_blocked,
                 })
         return result
 

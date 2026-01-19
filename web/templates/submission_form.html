@@ -11,13 +11,16 @@
 
     {% if error %}
     <div class="error-banner">
-        <strong>Submission Error:</strong> {{ error }}
+        <strong>Unable to submit:</strong> Please correct the following issues.
         {% if errors %}
         <ul>
             {% for err in errors %}
             <li>{{ err }}</li>
             {% endfor %}
         </ul>
+        {% endif %}
+        {% if missing_fields %}
+        <p class="error-help">All fields marked * are required. Check each section is complete.</p>
         {% endif %}
     </div>
     {% endif %}
@@ -27,7 +30,7 @@
         <!-- Property Details Section -->
         <section class="form-section">
             <h2>Property Details</h2>
-            <p class="section-note">All fields are mandatory. No marketing descriptions.</p>
+            <p class="section-note">All fields marked * are mandatory. Provide factual information only.</p>
 
             <div class="form-grid">
                 <div class="form-group full-width">
@@ -38,6 +41,7 @@
                            required
                            placeholder="123 Example Street, Town, County"
                            value="{{ form_data.full_address if form_data else '' }}">
+                    <span class="field-help">Street address, town/city, county. Must match Land Registry records.</span>
                 </div>
 
                 <div class="form-group">
@@ -49,6 +53,7 @@
                            pattern="[A-Za-z]{1,2}[0-9][A-Za-z0-9]?\s?[0-9][A-Za-z]{2}"
                            placeholder="SW1A 1AA"
                            value="{{ form_data.postcode if form_data else '' }}">
+                    <span class="field-help">Valid UK postcode format (e.g. SW1A 1AA).</span>
                 </div>
 
                 <div class="form-group">
@@ -84,6 +89,7 @@
                            min="1"
                            placeholder="85"
                            value="{{ form_data.floor_area_sqm if form_data else '' }}">
+                    <span class="field-help">Internal floor area in square metres. Use EPC or floor plan figure.</span>
                 </div>
 
                 <div class="form-group">
@@ -95,6 +101,7 @@
                            min="1"
                            placeholder="350000"
                            value="{{ form_data.guide_price if form_data else '' }}">
+                    <span class="field-help">Whole pounds only, no commas. E.g. 350000 not £350,000.</span>
                 </div>
 
                 <div class="form-group">
@@ -156,25 +163,28 @@
         <!-- Leasehold Section (conditionally shown) -->
         <section class="form-section leasehold-fields" id="leasehold-section" style="display: none;">
             <h2>Leasehold Details</h2>
-            <p class="section-note">Required for leasehold properties</p>
+            <p class="section-note">These fields help buyers assess the lease. Extract from the lease document.</p>
 
             <div class="form-grid">
                 <div class="form-group">
                     <label for="lease_years_remaining">Lease Years Remaining</label>
                     <input type="number" id="lease_years_remaining" name="lease_years_remaining" min="0"
                            value="{{ form_data.lease_years_remaining if form_data else '' }}">
+                    <span class="field-help">Remaining term from lease document. Below 80 years affects value.</span>
                 </div>
 
                 <div class="form-group">
                     <label for="ground_rent_annual">Ground Rent (£/year)</label>
                     <input type="number" id="ground_rent_annual" name="ground_rent_annual" min="0"
                            value="{{ form_data.ground_rent_annual if form_data else '' }}">
+                    <span class="field-help">Current annual ground rent. Enter 0 if peppercorn.</span>
                 </div>
 
                 <div class="form-group">
                     <label for="service_charge_annual">Service Charge (£/year)</label>
                     <input type="number" id="service_charge_annual" name="service_charge_annual" min="0"
                            value="{{ form_data.service_charge_annual if form_data else '' }}">
+                    <span class="field-help">Annual service charge from latest statement.</span>
                 </div>
             </div>
         </section>
@@ -182,13 +192,14 @@
         <!-- Agent Details Section -->
         <section class="form-section">
             <h2>Agent Details</h2>
+            <p class="section-note">Firm and email are linked to your invite. Only your name can be edited.</p>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="agent_firm">Firm / Company Name *</label>
-                    <input type="text" id="agent_firm" name="agent_firm" required
-                           placeholder="Smith & Partners"
-                           value="{{ form_data.agent_firm if form_data else '' }}">
+                    <label for="agent_firm">Firm / Company Name</label>
+                    <input type="text" id="agent_firm" name="agent_firm" readonly
+                           value="{{ agent_firm }}" class="locked-field">
+                    <span class="field-help">Linked to invite token. Contact Axis if incorrect.</span>
                 </div>
 
                 <div class="form-group">
@@ -196,27 +207,37 @@
                     <input type="text" id="agent_name" name="agent_name" required
                            placeholder="John Smith"
                            value="{{ form_data.agent_name if form_data else '' }}">
+                    <span class="field-help">Your full name as the submitting agent.</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="agent_email">Email Address *</label>
-                    <input type="email" id="agent_email" name="agent_email" required
-                           placeholder="john@smithpartners.co.uk"
-                           value="{{ form_data.agent_email if form_data else '' }}">
+                    <label for="agent_email">Email Address</label>
+                    <input type="email" id="agent_email" name="agent_email" readonly
+                           value="{{ agent_email }}" class="locked-field">
+                    <span class="field-help">Linked to invite token. All notifications sent here.</span>
                 </div>
             </div>
+
+            <!-- Hidden field to pass invite token -->
+            <input type="hidden" name="invite" value="{{ invite_token }}">
         </section>
 
         <!-- Document Upload Section -->
         <section class="form-section">
-            <h2>Mandatory Documents</h2>
-            <p class="section-note">Upload required documents. Accepted formats: PDF, JPG, PNG, TIFF (max 10MB each)</p>
+            <h2>Required Documents</h2>
+            <p class="section-note">Upload required documents. Accepted: PDF, JPG, PNG, TIFF (max 10MB each). Missing documents will block submission.</p>
+
+            <div class="doc-requirements-box">
+                <strong>Why these documents?</strong>
+                Documents are required to verify property details before evaluation. Submissions without all required documents cannot proceed to buyer presentation.
+            </div>
 
             <div class="document-grid">
                 <div class="document-upload">
                     <label for="title_register">
                         <span class="doc-label">Title Register *</span>
-                        <span class="doc-hint">Official Land Registry document</span>
+                        <span class="doc-hint">Official Land Registry document confirming ownership and title.</span>
+                        <span class="doc-why">Order from HM Land Registry if not available.</span>
                     </label>
                     <input type="file" id="title_register" name="title_register"
                            accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
@@ -225,7 +246,8 @@
                 <div class="document-upload">
                     <label for="epc_document">
                         <span class="doc-label">EPC Certificate *</span>
-                        <span class="doc-hint">Energy Performance Certificate</span>
+                        <span class="doc-hint">Current Energy Performance Certificate (valid for 10 years).</span>
+                        <span class="doc-why">Download from gov.uk EPC register if lost.</span>
                     </label>
                     <input type="file" id="epc_document" name="epc_document"
                            accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
@@ -234,7 +256,8 @@
                 <div class="document-upload">
                     <label for="floor_plan">
                         <span class="doc-label">Floor Plan *</span>
-                        <span class="doc-hint">Measured floor plan</span>
+                        <span class="doc-hint">Measured floor plan showing room dimensions.</span>
+                        <span class="doc-why">Professional or accurate hand-drawn plan accepted.</span>
                     </label>
                     <input type="file" id="floor_plan" name="floor_plan"
                            accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
@@ -243,16 +266,18 @@
                 <div class="document-upload leasehold-doc" id="lease-upload" style="display: none;">
                     <label for="lease_document">
                         <span class="doc-label">Lease Document *</span>
-                        <span class="doc-hint">Required for leasehold properties</span>
+                        <span class="doc-hint">Full lease agreement showing term, ground rent, and restrictions.</span>
+                        <span class="doc-why">Required for leasehold properties. Blocks submission if missing.</span>
                     </label>
                     <input type="file" id="lease_document" name="lease_document"
                            accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
                 </div>
 
-                <div class="document-upload">
+                <div class="document-upload optional-doc">
                     <label for="planning_approval">
                         <span class="doc-label">Planning Approval</span>
-                        <span class="doc-hint">If applicable</span>
+                        <span class="doc-hint">Planning permission or approval notice if development potential.</span>
+                        <span class="doc-why">Optional. Include if property has planning consent.</span>
                     </label>
                     <input type="file" id="planning_approval" name="planning_approval"
                            accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
@@ -334,6 +359,12 @@ document.addEventListener('DOMContentLoaded', toggleLeaseholdFields);
 .error-banner ul {
     margin: 0.5rem 0 0 1.5rem;
     padding: 0;
+}
+
+.error-banner .error-help {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    font-style: italic;
 }
 
 .form-section {
@@ -480,6 +511,57 @@ document.addEventListener('DOMContentLoaded', toggleLeaseholdFields);
 
 .submit-btn:hover {
     background: #2d2d4a;
+}
+
+/* Helper text for form fields */
+.field-help {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* Locked fields (invite-linked) */
+.locked-field {
+    background: #f5f5f5;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* Document requirements box */
+.doc-requirements-box {
+    background: #f0f7ff;
+    border: 1px solid #d0e3ff;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: #1e40af;
+}
+
+.doc-requirements-box strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+/* Document why text */
+.doc-why {
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Optional document styling */
+.document-upload.optional-doc {
+    border-style: dotted;
+    opacity: 0.9;
+}
+
+.document-upload.optional-doc .doc-label {
+    color: #666;
 }
 </style>
 {% endblock %}

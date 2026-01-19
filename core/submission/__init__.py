@@ -18,9 +18,12 @@ from core.submission.schema import (
     DocumentType,
     DocumentRecord,
     SubmissionStatus,
+    CompletenessScore,
     REQUIRED_SUBMISSION_FIELDS,
     REQUIRED_DOCUMENTS,
     LEASEHOLD_REQUIRED_DOCUMENTS,
+    CONTEXTUAL_FIELDS_FREEHOLD,
+    CONTEXTUAL_FIELDS_LEASEHOLD,
 )
 from core.submission.storage import (
     DocumentStorage,
@@ -127,6 +130,17 @@ from core.submission.invite import (
     TOKEN_BYTES,
     DEFAULT_EXPIRY_DAYS,
 )
+from core.submission.friction_log import (
+    # Model
+    FrictionEntry,
+    # Repository
+    FrictionLogRepository,
+    get_friction_log_repository,
+    reset_friction_log_repository,
+    # Constants
+    FRICTION_CATEGORIES,
+    FRICTION_LOG_DIR,
+)
 
 __all__ = [
     # Schema
@@ -135,9 +149,12 @@ __all__ = [
     "DocumentType",
     "DocumentRecord",
     "SubmissionStatus",
+    "CompletenessScore",
     "REQUIRED_SUBMISSION_FIELDS",
     "REQUIRED_DOCUMENTS",
     "LEASEHOLD_REQUIRED_DOCUMENTS",
+    "CONTEXTUAL_FIELDS_FREEHOLD",
+    "CONTEXTUAL_FIELDS_LEASEHOLD",
     # Storage
     "DocumentStorage",
     "get_document_storage",
@@ -219,4 +236,11 @@ __all__ = [
     "generate_token_value",
     "TOKEN_BYTES",
     "DEFAULT_EXPIRY_DAYS",
+    # Friction Log (Admin Internal)
+    "FrictionEntry",
+    "FrictionLogRepository",
+    "get_friction_log_repository",
+    "reset_friction_log_repository",
+    "FRICTION_CATEGORIES",
+    "FRICTION_LOG_DIR",
 ]

@@ -211,6 +211,94 @@ class DocumentRecord:
 
 
 # =============================================================================
+# Completeness Score (Admin Only)
+# =============================================================================
+
+# Contextual fields that vary by property type
+CONTEXTUAL_FIELDS_FREEHOLD: tuple[str, ...] = (
+    "bedrooms",
+    "bathrooms",
+    "year_built",
+    "epc_rating",
+)
+
+CONTEXTUAL_FIELDS_LEASEHOLD: tuple[str, ...] = (
+    "bedrooms",
+    "bathrooms",
+    "year_built",
+    "epc_rating",
+    "lease_years_remaining",
+    "ground_rent_annual",
+    "service_charge_annual",
+)
+
+
+@dataclass
+class CompletenessScore:
+    """
+    Submission completeness score breakdown (Admin Only).
+
+    Score is out of 100, deterministic and explainable:
+    - Core required fields complete: 40%
+    - Required documents uploaded: 40%
+    - Contextual fields complete: 20%
+    """
+
+    total_score: int  # 0-100
+    core_fields_score: int  # 0-40
+    documents_score: int  # 0-40
+    contextual_score: int  # 0-20
+
+    # Breakdown details
+    core_fields_complete: int
+    core_fields_total: int
+    documents_uploaded: int
+    documents_required: int
+    contextual_fields_complete: int
+    contextual_fields_total: int
+
+    # Specific issues (for admin explanation)
+    missing_core_fields: list[str]
+    missing_documents: list[str]
+    missing_contextual_fields: list[str]
+
+    @property
+    def is_blocked(self) -> bool:
+        """Submission is blocked if core fields or documents incomplete."""
+        return self.core_fields_score < 40 or self.documents_score < 40
+
+    @property
+    def blocking_reasons(self) -> list[str]:
+        """Human-readable blocking reasons for admin."""
+        reasons = []
+        for field_name in self.missing_core_fields:
+            reasons.append(f"Missing required field: {field_name.replace('_', ' ').title()}")
+        for doc in self.missing_documents:
+            reasons.append(f"Missing document: {doc.replace('_', ' ').title()}")
+        return reasons
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for template rendering."""
+        return {
+            "total_score": self.total_score,
+            "core_fields_score": self.core_fields_score,
+            "documents_score": self.documents_score,
+            "contextual_score": self.contextual_score,
+            "core_fields_complete": self.core_fields_complete,
+            "core_fields_total": self.core_fields_total,
+            "documents_uploaded": self.documents_uploaded,
+            "documents_required": self.documents_required,
+            "contextual_fields_complete": self.contextual_fields_complete,
+            "contextual_fields_total": self.contextual_fields_total,
+            "missing_core_fields": self.missing_core_fields,
+            "missing_documents": self.missing_documents,
+            "missing_contextual_fields": self.missing_contextual_fields,
+            "is_blocked": self.is_blocked,
+            "blocking_reasons": self.blocking_reasons,
+        }
+
+
+# =============================================================================
 # Agent Submission
 # =============================================================================
 
@@ -337,6 +425,73 @@ class AgentSubmission:
     def is_complete(self) -> bool:
         """Check if submission is complete (all fields and documents)."""
         return self.has_all_required_documents
+
+    def get_completeness_score(self) -> CompletenessScore:
+        """
+        Calculate completeness score (Admin Only).
+
+        Scoring breakdown:
+        - Core required fields complete: 40%
+        - Required documents uploaded: 40%
+        - Contextual fields complete: 20%
+        """
+        # === Core fields (40%) ===
+        core_fields_total = len(REQUIRED_SUBMISSION_FIELDS)
+        missing_core = []
+
+        # Check each required field
+        for field_name in REQUIRED_SUBMISSION_FIELDS:
+            value = getattr(self, field_name, None)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                missing_core.append(field_name)
+
+        core_fields_complete = core_fields_total - len(missing_core)
+        core_fields_score = int((core_fields_complete / core_fields_total) * 40) if core_fields_total > 0 else 40
+
+        # === Documents (40%) ===
+        required_docs = self.required_document_types
+        documents_required = len(required_docs)
+        uploaded_types = self.uploaded_document_types
+        missing_docs = [dt.value for dt in required_docs if dt not in uploaded_types]
+
+        documents_uploaded = documents_required - len(missing_docs)
+        documents_score = int((documents_uploaded / documents_required) * 40) if documents_required > 0 else 40
+
+        # === Contextual fields (20%) ===
+        if self.is_leasehold:
+            contextual_fields = CONTEXTUAL_FIELDS_LEASEHOLD
+        else:
+            contextual_fields = CONTEXTUAL_FIELDS_FREEHOLD
+
+        contextual_fields_total = len(contextual_fields)
+        missing_contextual = []
+
+        for field_name in contextual_fields:
+            value = getattr(self, field_name, None)
+            if value is None:
+                missing_contextual.append(field_name)
+
+        contextual_fields_complete = contextual_fields_total - len(missing_contextual)
+        contextual_score = int((contextual_fields_complete / contextual_fields_total) * 20) if contextual_fields_total > 0 else 20
+
+        # === Total ===
+        total_score = core_fields_score + documents_score + contextual_score
+
+        return CompletenessScore(
+            total_score=total_score,
+            core_fields_score=core_fields_score,
+            documents_score=documents_score,
+            contextual_score=contextual_score,
+            core_fields_complete=core_fields_complete,
+            core_fields_total=core_fields_total,
+            documents_uploaded=documents_uploaded,
+            documents_required=documents_required,
+            contextual_fields_complete=contextual_fields_complete,
+            contextual_fields_total=contextual_fields_total,
+            missing_core_fields=missing_core,
+            missing_documents=missing_docs,
+            missing_contextual_fields=missing_contextual,
+        )
 
     def get_document(self, document_type: DocumentType) -> Optional[DocumentRecord]:
         """Get document by type."""

@@ -110,17 +110,25 @@
         <ol class="next-steps">
             <li>
                 <strong>Document Verification</strong>
-                <p>Our team will verify the submitted documents</p>
+                <p>Our team reviews uploaded documents to confirm property details match Land Registry and EPC records.</p>
             </li>
             <li>
                 <strong>Deal Engine Evaluation</strong>
-                <p>Property will be evaluated against comparable sales data</p>
+                <p>Once verified, the property is evaluated against comparable sales from Land Registry Price Paid data.</p>
             </li>
             <li>
-                <strong>Notification</strong>
-                <p>You will be notified of the evaluation outcome at {{ submission.agent_email }}</p>
+                <strong>Buyer Presentation</strong>
+                <p>Qualifying properties are presented to verified buyers via a secure, branded PDF memorandum.</p>
+            </li>
+            <li>
+                <strong>Status Updates</strong>
+                <p>You will receive updates at {{ submission.agent_email }}. No action required unless we request clarification.</p>
             </li>
         </ol>
+
+        <div class="timeline-note">
+            <strong>Timeline:</strong> Verification typically takes 1-2 business days. You can check your submission status any time using Property ID: <code>{{ submission.property_id }}</code>
+        </div>
     </section>
 
     <div class="actions">
@@ -354,6 +362,22 @@
 
 .btn-secondary:hover {
     background: #d1d5db;
+}
+
+.timeline-note {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f0f7ff;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #1e40af;
+}
+
+.timeline-note code {
+    background: #dbeafe;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    font-family: monospace;
 }
 </style>
 {% endblock %}

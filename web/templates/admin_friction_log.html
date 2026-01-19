@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friction Log - Admin Dashboard - Axis Allocation</title>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --charcoal: #333338;
+            --slate: #596068;
+            --gray: #808080;
+            --light-gray: #d9d9d9;
+            --pale-gray: #f2f2f2;
+            --white: #ffffff;
+            --accent: #26405c;
+            --success: #16a34a;
+            --success-bg: #dcfce7;
+            --warning: #ca8a04;
+            --warning-bg: #fef3c7;
+            --error: #dc2626;
+            --error-bg: #fee2e2;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--charcoal);
+            background: var(--pale-gray);
+        }
+
+        /* Header */
+        .admin-header {
+            background: var(--accent);
+            color: var(--white);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .admin-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .admin-email {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .logout-btn, .nav-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--white);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover, .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Main Content */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .page-header h2 {
+            font-size: 24px;
+            color: var(--charcoal);
+        }
+
+        /* Success Alert */
+        .success-alert {
+            background: var(--success-bg);
+            color: var(--success);
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        /* Grid Layout */
+        .friction-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .friction-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--pale-gray);
+        }
+
+        .card-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--charcoal);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--charcoal);
+            margin-bottom: 4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 1px solid var(--light-gray);
+            border-radius: 6px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            background: var(--accent);
+            color: var(--white);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .submit-btn:hover {
+            background: #1d3349;
+        }
+
+        /* Summary Stats */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 16px;
+            background: var(--pale-gray);
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--charcoal);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Top Categories */
+        .top-categories {
+            margin-top: 16px;
+        }
+
+        .category-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .category-name {
+            flex: 1;
+            font-size: 13px;
+            color: var(--charcoal);
+        }
+
+        .category-count {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-left: 8px;
+        }
+
+        /* Entries List */
+        .entry-list {
+            list-style: none;
+        }
+
+        .entry-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--pale-gray);
+        }
+
+        .entry-item:last-child {
+            border-bottom: none;
+        }
+
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .entry-category {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #e0e7ff;
+            color: #3730a3;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .entry-severity {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .entry-severity.low { background: #e5e7eb; color: #374151; }
+        .entry-severity.medium { background: var(--warning-bg); color: #92400e; }
+        .entry-severity.high { background: var(--error-bg); color: #991b1b; }
+
+        .entry-description {
+            font-size: 14px;
+            color: var(--charcoal);
+            margin-bottom: 8px;
+        }
+
+        .entry-meta {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .entry-meta span {
+            margin-right: 12px;
+        }
+
+        .entry-cause {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: var(--pale-gray);
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--slate);
+            font-style: italic;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <h1>Axis Allocation Admin</h1>
+        <div class="admin-header-right">
+            <a href="/admin/submissions" class="nav-btn">Submissions</a>
+            <span class="admin-email">{{ admin.email }}</span>
+            <form method="POST" action="/admin/logout" style="display: inline;">
+                <button type="submit" class="logout-btn">Sign Out</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="page-header">
+            <h2>Friction Log (Internal)</h2>
+        </div>
+
+        {% if request.query_params.get('logged') == 'true' %}
+        <div class="success-alert">
+            Friction entry logged successfully.
+        </div>
+        {% endif %}
+
+        <div class="friction-grid">
+            <!-- Left Column: Log Form -->
+            <div class="form-column">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Log Friction</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/friction">
+                            <div class="form-group">
+                                <label for="category">Category *</label>
+                                <select id="category" name="category" required>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat }}">{{ cat.replace('_', ' ').title() }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="step_location">Where in Flow *</label>
+                                <input type="text" id="step_location" name="step_location" required
+                                       placeholder="e.g. Document upload, Leasehold fields">
+                                <p class="form-hint">Step or screen where friction occurred</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description">What Happened *</label>
+                                <textarea id="description" name="description" required
+                                          placeholder="Describe what the agent struggled with"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="potential_cause">Potential Cause *</label>
+                                <textarea id="potential_cause" name="potential_cause" required
+                                          placeholder="Your assessment of why this happened"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="severity">Severity</label>
+                                <select id="severity" name="severity">
+                                    <option value="low">Low - Minor confusion</option>
+                                    <option value="medium" selected>Medium - Blocked temporarily</option>
+                                    <option value="high">High - Agent abandoned or required help</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="property_id">Property ID (optional)</label>
+                                <input type="text" id="property_id" name="property_id"
+                                       placeholder="PROP-XXXX"
+                                       value="{{ request.query_params.get('property_id', '') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="agent_email">Agent Email (optional)</label>
+                                <input type="email" id="agent_email" name="agent_email"
+                                       placeholder="agent@firm.com"
+                                       value="{{ request.query_params.get('agent_email', '') }}">
+                            </div>
+
+                            <button type="submit" class="submit-btn">Log Friction</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Summary & Entries -->
+            <div class="entries-column">
+                <!-- Summary -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Last 7 Days Summary</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="summary-stats">
+                            <div class="stat-box">
+                                <div class="stat-value">{{ summary.total_entries }}</div>
+                                <div class="stat-label">Total Entries</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">{{ summary.by_severity.high }}</div>
+                                <div class="stat-label">High Severity</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">{{ summary.by_severity.medium }}</div>
+                                <div class="stat-label">Medium Severity</div>
+                            </div>
+                        </div>
+
+                        {% if summary.top_categories %}
+                        <div class="top-categories">
+                            <strong>Top Categories:</strong>
+                            {% for cat, count in summary.top_categories %}
+                            {% if count > 0 %}
+                            <div class="category-bar">
+                                <span class="category-name">{{ cat.replace('_', ' ').title() }}</span>
+                                <span class="category-count">{{ count }}</span>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Recent Entries -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Entries</h3>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        {% if entries %}
+                        <ul class="entry-list">
+                            {% for entry in entries[:20] %}
+                            <li class="entry-item">
+                                <div class="entry-header">
+                                    <span class="entry-category">{{ entry.category.replace('_', ' ').title() }}</span>
+                                    <span class="entry-severity {{ entry.severity }}">{{ entry.severity.title() }}</span>
+                                </div>
+                                <div class="entry-description">{{ entry.description }}</div>
+                                <div class="entry-meta">
+                                    <span><strong>Location:</strong> {{ entry.step_location }}</span>
+                                    <span><strong>By:</strong> {{ entry.recorded_by }}</span>
+                                    <span>{{ entry.recorded_at[:10] }}</span>
+                                </div>
+                                <div class="entry-cause">
+                                    <strong>Cause:</strong> {{ entry.potential_cause }}
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>No friction entries yet.</p>
+                            <p>Use the form to log agent friction points.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

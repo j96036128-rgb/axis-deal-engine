@@ -260,15 +260,28 @@
         .status-archived { background: #e5e7eb; color: #374151; }
         .status-withdrawn { background: #fef2f2; color: #991b1b; }
 
-        /* Complete indicator */
-        .complete-yes {
-            color: var(--success);
-            font-size: 14px;
+        /* Completeness Score Pill */
+        .completeness-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
         }
 
-        .complete-no {
-            color: var(--warning);
-            font-size: 13px;
+        .completeness-pill.score-good {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .completeness-pill.score-partial {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .completeness-pill.score-blocked {
+            background: #fee2e2;
+            color: #991b1b;
         }
 
         /* Empty State */
@@ -354,7 +367,7 @@
                             <th>Guide Price</th>
                             <th>Agent</th>
                             <th>Status</th>
-                            <th>Complete</th>
+                            <th>Score</th>
                             <th>Submitted</th>
                             <th>Action</th>
                         </tr>
@@ -384,11 +397,9 @@
                                 </span>
                             </td>
                             <td>
-                                {% if sub.is_complete %}
-                                <span class="complete-yes">&#10003; Yes</span>
-                                {% else %}
-                                <span class="complete-no">{{ sub.missing_documents|length }} missing</span>
-                                {% endif %}
+                                <span class="completeness-pill {% if sub.completeness_score >= 80 %}score-good{% elif sub.completeness_score >= 60 %}score-partial{% else %}score-blocked{% endif %}">
+                                    {{ sub.completeness_score }}%
+                                </span>
                             </td>
                             <td class="timestamp-cell">
                                 {{ sub.created_at[:10] }}

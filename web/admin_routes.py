@@ -14,6 +14,8 @@ Routes:
 - POST /admin/submissions/{id}/reject  - Reject submission
 - GET  /admin/documents/{property_id}/{document_id} - Download document
 - POST /admin/submissions/{id}/status - Update status
+- GET  /admin/friction       - Friction log dashboard
+- POST /admin/friction       - Log friction entry
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ from core.submission import (
     get_submission_repository,
     VersionAction,
     create_verification_summary_from_submission,
+    get_friction_log_repository,
+    FRICTION_CATEGORIES,
 )
 from web.admin_auth import (
     AdminSession,
@@ -224,6 +228,9 @@ async def submission_detail(
         doc_dict["download_url"] = f"/admin/documents/{property_id}/{doc.document_id}"
         documents_with_urls.append(doc_dict)
 
+    # Calculate completeness score (Admin Only)
+    completeness_score = submission.get_completeness_score()
+
     return templates.TemplateResponse(
         "admin_submission_detail.html",
         {
@@ -233,6 +240,7 @@ async def submission_detail(
             "submission_obj": submission,
             "logbook": logbook.to_dict(),
             "completeness": completeness,
+            "completeness_score": completeness_score.to_dict(),
             "history": history,
             "statuses": [s.value for s in SubmissionStatus],
             "integrity": integrity,
@@ -408,5 +416,69 @@ async def update_status(
 
     return RedirectResponse(
         url=f"/admin/submissions/{property_id}",
+        status_code=303,
+    )
+
+
+# =============================================================================
+# Friction Log (Internal Admin Only)
+# =============================================================================
+
+
+@router.get("/friction", response_class=HTMLResponse)
+async def friction_log_page(
+    request: Request,
+    admin: AdminSession = Depends(require_admin),
+):
+    """View friction log dashboard."""
+    friction_repo = get_friction_log_repository()
+
+    # Get recent entries and summary
+    recent_entries = friction_repo.get_recent_entries(days=7)
+    summary = friction_repo.get_summary(days=7)
+
+    return templates.TemplateResponse(
+        "admin_friction_log.html",
+        {
+            "request": request,
+            "admin": admin,
+            "entries": [e.to_dict() for e in recent_entries],
+            "summary": summary,
+            "categories": FRICTION_CATEGORIES,
+        },
+    )
+
+
+@router.post("/friction")
+async def log_friction(
+    request: Request,
+    category: str = Form(...),
+    description: str = Form(...),
+    step_location: str = Form(...),
+    potential_cause: str = Form(...),
+    property_id: Optional[str] = Form(None),
+    agent_email: Optional[str] = Form(None),
+    severity: str = Form("medium"),
+    admin: AdminSession = Depends(require_admin),
+):
+    """Record a new friction entry."""
+    friction_repo = get_friction_log_repository()
+
+    try:
+        friction_repo.add_entry(
+            category=category,
+            description=description,
+            step_location=step_location,
+            potential_cause=potential_cause,
+            recorded_by=admin.email,
+            property_id=property_id if property_id else None,
+            agent_email=agent_email if agent_email else None,
+            severity=severity,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return RedirectResponse(
+        url="/admin/friction?logged=true",
         status_code=303,
     )
