@@ -12,6 +12,8 @@ Routes:
 - GET  /admin/submissions/{id} - View submission detail
 - POST /admin/submissions/{id}/approve - Approve submission
 - POST /admin/submissions/{id}/reject  - Reject submission
+- GET  /admin/documents/{property_id}/{document_id} - Download document
+- POST /admin/submissions/{id}/status - Update status
 """
 
 from __future__ import annotations
