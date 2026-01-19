@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Request, Form, HTTPException, Depends
+from fastapi import APIRouter, Request, Form, HTTPException, Depends, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -146,10 +146,16 @@ async def logout(request: Request):
 @router.get("/submissions", response_class=HTMLResponse)
 async def submissions_list(
     request: Request,
+    response: Response,
     admin: AdminSession = Depends(require_admin),
     status_filter: Optional[str] = None,
 ):
     """List all submissions for admin review."""
+    # Prevent caching of admin pages
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
     repo = get_submission_repository()
 
     # Get all submissions
