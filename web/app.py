@@ -1,8 +1,11 @@
 """
 FastAPI application for the deal engine web interface.
 Phase 7: Planning Context Input + UI Surfacing
+
+Production deployment configuration via environment variables.
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, List
@@ -10,12 +13,30 @@ import re
 import sys
 
 from fastapi import FastAPI, Request, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from core import SearchCriteria, BMVScorer, DealAnalyzer, Confidence, Recommendation
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+
+# Production mode detection
+IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("PRODUCTION", "").lower() == "true"
+
+# CORS configuration - locked down for production
+# In production, only allow the Railway-assigned domain
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
+if not ALLOWED_ORIGINS and not IS_PRODUCTION:
+    # Development fallback only
+    ALLOWED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
+
+# Debug mode - NEVER enabled in production
+DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true" and not IS_PRODUCTION
 
 # Import submission routes
 from web.submission_routes import router as submission_router
@@ -370,7 +391,22 @@ def create_app() -> FastAPI:
         title="Axis Deal Engine",
         description="Internal deal sourcing engine for property opportunities",
         version="0.1.0",
+        # Production settings: disable docs/redoc for private deployment
+        docs_url=None if IS_PRODUCTION else "/docs",
+        redoc_url=None if IS_PRODUCTION else "/redoc",
+        openapi_url=None if IS_PRODUCTION else "/openapi.json",
+        debug=DEBUG_MODE,
     )
+
+    # CORS middleware - locked down for production
+    if ALLOWED_ORIGINS:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=ALLOWED_ORIGINS,
+            allow_credentials=True,
+            allow_methods=["GET", "POST"],
+            allow_headers=["*"],
+        )
 
     # Mount static files
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -658,7 +694,11 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     async def health():
         """Health check endpoint."""
-        return {"status": "healthy", "version": "0.1.0"}
+        return {
+            "status": "healthy",
+            "version": "0.1.0",
+            "environment": "production" if IS_PRODUCTION else "development",
+        }
 
     return app
 
