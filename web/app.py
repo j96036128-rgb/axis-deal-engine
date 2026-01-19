@@ -398,6 +398,15 @@ def create_app() -> FastAPI:
         debug=DEBUG_MODE,
     )
 
+    # ==========================================================================
+    # CRITICAL: Health endpoint must be registered FIRST, before any middleware
+    # or static mounts that could fail. Railway healthcheck depends on this.
+    # ==========================================================================
+    @app.get("/health", include_in_schema=False)
+    def health():
+        """Minimal health check for Railway. No dependencies."""
+        return {"status": "ok"}
+
     # CORS middleware - locked down for production
     if ALLOWED_ORIGINS:
         app.add_middleware(
