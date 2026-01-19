@@ -437,10 +437,10 @@ def create_app() -> FastAPI:
     app.mount("/reports", StaticFiles(directory=REPORTS_DIR, check_dir=False), name="reports")
 
     # ==========================================================================
-    # Heavy imports deferred inside create_app to avoid import-time side effects
+    # Heavy imports deferred to request time to avoid startup failures
+    # Scraper imports are lazy - only loaded when search is invoked
     # ==========================================================================
     from web.submission_routes import router as submission_router
-    from scraper import AuctionHouseLondonScraper
     from core import SearchCriteria, BMVScorer, DealAnalyzer
 
     # Add reporting module to path
@@ -454,9 +454,13 @@ def create_app() -> FastAPI:
     # Templates
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-    # Initialize components — REAL DATA ONLY
-    # No mock/dummy data allowed
-    scraper = AuctionHouseLondonScraper()
+    # ==========================================================================
+    # Lazy scraper factory - imports only when called (avoids startup crash)
+    # ==========================================================================
+    def get_scraper():
+        """Lazy import of scraper to avoid startup failures."""
+        from scraper import AuctionHouseLondonScraper
+        return AuctionHouseLondonScraper()
 
     # Use new DealAnalyzer with Comp Engine integration
     # (Legacy BMVScorer is still available but deprecated)
@@ -507,7 +511,9 @@ def create_app() -> FastAPI:
 
         # Fetch REAL listings from Auction House London
         # No dummy data fallback - empty results are valid
+        # Scraper is lazy-loaded to avoid startup crashes
         try:
+            scraper = get_scraper()
             listings = await scraper.search(criteria)
         except Exception as e:
             # Network/scraping error - show clear message
